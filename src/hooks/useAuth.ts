@@ -1,107 +1,68 @@
-import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { User } from '@supabase/supabase-js';
-import type { DbUser } from '@/types/supabase';
+import { useState, useEffect, useCallback } from 'react'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import type { DbUser } from '@/types/supabase'
 
 export interface AuthState {
-  user: User | null;
-  profile: DbUser | null;
-  role: string | null;
-  isLoading: boolean;
-  isAuthenticated: boolean;
+  session: any | null
+  user: DbUser | null
+  loading: boolean
+  isAdmin: boolean
+  signIn: (email: string, password: string) => Promise<any>
+  signOut: () => Promise<void>
 }
 
-export function useAuth() {
-  const [state, setState] = useState<AuthState>({
-    user: null,
-    profile: null,
-    role: null,
-    isLoading: true,
-    isAuthenticated: false,
-  });
+export function useAuth(): AuthState {
+  const [session, setSession] = useState<any>(null)
+  const [user, setUser] = useState<DbUser | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  const fetchUser = useCallback(async (userId: string) => {
+    if (!isSupabaseConfigured) return
+    const { data } = await supabase.from('users').select('*').eq('id', userId).single()
+    setUser(data || null)
+  }, [])
 
   useEffect(() => {
-    let mounted = true;
-
-    async function init() {
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!mounted) return;
-
-        if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          setState({
-            user: session.user,
-            profile,
-            role: profile?.role ?? null,
-            isLoading: false,
-            isAuthenticated: true,
-          });
-        } else {
-          setState(s => ({ ...s, isLoading: false, isAuthenticated: false }));
-        }
-      } catch (err) {
-        console.error('Auth 初始化失败:', err);
-        if (mounted) {
-          setState(s => ({ ...s, isLoading: false, isAuthenticated: false }));
-        }
-      }
+    if (!isSupabaseConfigured) {
+      setLoading(false)
+      return
     }
 
-    init();
+    supabase.auth.getSession().then(({ data: { session: s } }: { data: { session: any } }) => {
+      setSession(s)
+      if (s?.user?.id) fetchUser(s.user.id)
+      setLoading(false)
+    })
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        if (!mounted) return;
-        if (session?.user) {
-          const profile = await fetchProfile(session.user.id);
-          setState({
-            user: session.user,
-            profile,
-            role: profile?.role ?? null,
-            isLoading: false,
-            isAuthenticated: true,
-          });
-        } else {
-          setState({
-            user: null,
-            profile: null,
-            role: null,
-            isLoading: false,
-            isAuthenticated: false,
-          });
-        }
-      }
-    );
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event: string, s: any) => {
+      setSession(s)
+      if (s?.user?.id) fetchUser(s.user.id)
+      else setUser(null)
+    })
 
-    return () => {
-      mounted = false;
-      subscription.unsubscribe();
-    };
-  }, []);
+    return () => subscription.unsubscribe()
+  }, [fetchUser])
 
-  const signIn = useCallback(async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-  }, []);
+  const signIn = async (email: string, password: string) => {
+    if (!isSupabaseConfigured) throw new Error('Supabase 未配置')
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
+    if (error) throw error
+    return data
+  }
 
-  const signOut = useCallback(async () => {
-    await supabase.auth.signOut();
-  }, []);
+  const signOut = async () => {
+    if (!isSupabaseConfigured) return
+    await supabase.auth.signOut()
+    setSession(null)
+    setUser(null)
+  }
 
-  return { ...state, signIn, signOut };
-}
-
-async function fetchProfile(userId: string): Promise<DbUser | null> {
-  try {
-    const { data, error } = await supabase
-      .from('users')
-      .select('*')
-      .eq('id', userId)
-      .single();
-    if (error) return null;
-    return data;
-  } catch {
-    return null;
+  return {
+    session,
+    user,
+    loading,
+    isAdmin: user?.role === 'founder' || user?.role === 'ceo',
+    signIn,
+    signOut,
   }
 }

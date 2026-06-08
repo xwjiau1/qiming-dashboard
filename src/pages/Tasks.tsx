@@ -9,7 +9,8 @@ import {
   FolderKanban,
 } from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
-import { tasks, projects, priorityConfig } from '@/data';
+import { useData } from '@/hooks/useData';
+import { priorityConfig, type Task } from '@/data/static-data';
 
 type ViewMode = 'board' | 'list';
 type StatusColumn = 'todo' | 'in-progress' | 'review' | 'completed';
@@ -33,7 +34,7 @@ function TaskCard({
   index,
   columnIndex,
 }: {
-  task: (typeof tasks)[0];
+  task: Task;
   index: number;
   columnIndex: number;
 }) {
@@ -116,7 +117,7 @@ function TaskCard({
   );
 }
 
-function ListRow({ task, index }: { task: (typeof tasks)[0]; index: number }) {
+function ListRow({ task, index }: { task: Task; index: number }) {
   const isBlue = task.departmentColor === 'blue';
   const priority = priorityConfig[task.priority];
   const status = statusLabels[task.status];
@@ -183,17 +184,18 @@ function ListRow({ task, index }: { task: (typeof tasks)[0]; index: number }) {
 }
 
 export default function Tasks() {
+  const { tasks, projects } = useData();
   const [viewMode, setViewMode] = useState<ViewMode>('board');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
 
   const filteredTasks = useMemo(() => {
-    return tasks.filter((t) => {
+    return tasks.filter((t: any) => {
       if (projectFilter !== 'all' && t.projectId !== projectFilter) return false;
       if (priorityFilter !== 'all' && t.priority !== priorityFilter) return false;
       return true;
     });
-  }, [projectFilter, priorityFilter]);
+  }, [projectFilter, priorityFilter, tasks]);
 
   return (
     <PageLayout title="任务管理" subtitle="追踪任务进度，任务与项目关联">
@@ -229,7 +231,7 @@ export default function Tasks() {
             className="h-9 px-3 bg-surface border border-surface-tertiary rounded-lg text-sm text-gray-400 focus:outline-none focus:border-brand-blue"
           >
             <option value="all">全部项目</option>
-            {projects.map((p) => (
+            {projects.map((p: any) => (
               <option key={p.id} value={p.id}>
                 {p.name}
               </option>
@@ -266,7 +268,7 @@ export default function Tasks() {
             className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4"
           >
             {columns.map((col, colIndex) => {
-              const colTasks = filteredTasks.filter((t) => t.status === col.key);
+              const colTasks = filteredTasks.filter((t: any) => t.status === col.key);
               return (
                 <div key={col.key} className="flex flex-col">
                   {/* Column Header */}
@@ -282,7 +284,7 @@ export default function Tasks() {
 
                   {/* Task Cards */}
                   <div className="space-y-3 flex-1">
-                    {colTasks.map((task, index) => (
+                    {colTasks.map((task: any, index: number) => (
                       <TaskCard key={task.id} task={task} index={index} columnIndex={colIndex} />
                     ))}
                     {colTasks.length === 0 && (
@@ -317,7 +319,7 @@ export default function Tasks() {
             </div>
 
             {/* Rows */}
-            {filteredTasks.map((task, index) => (
+            {filteredTasks.map((task: any, index: number) => (
               <ListRow key={task.id} task={task} index={index} />
             ))}
 

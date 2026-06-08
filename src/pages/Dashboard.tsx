@@ -20,7 +20,7 @@ import ProjectDetailModal from '@/components/ProjectDetailModal';
 import { ShimmerCard, AnimatedProgressBar } from '@/components/gsap';
 import SplitTextReveal from '@/components/gsap/SplitTextReveal';
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber';
-import { kpiData, projects, activities, departments, tasks } from '@/data';
+import { useData } from '@/hooks/useData';
 import type { Project } from '@/data';
 
 // ==================== GSAP KPI Card ====================
@@ -40,7 +40,7 @@ function KpiCard({
   delay: number;
 }) {
   const { ref, value: displayValue } = useAnimatedNumber(value, {
-    duration: 2.0, // SLOWED DOWN for visibility
+    duration: 2.0,
     ease: 'power2.out',
     delay,
   });
@@ -68,9 +68,9 @@ function KpiCard({
 }
 
 // ==================== Department Card ====================
-function DepartmentCard({ dept, delay }: { dept: (typeof departments)[0]; delay: number }) {
+function DepartmentCard({ dept, delay, tasks, projects }: { dept: any; delay: number; tasks: any[]; projects: any[] }) {
   const isBlue = dept.color === 'blue';
-  const deptTasks = tasks.filter((t) => t.department === dept.name);
+  const deptTasks = tasks.filter((t) => t.department === dept.name || t.department_id === dept.id);
   const completedTasks = deptTasks.filter((t) => t.status === 'completed');
   const activeTasks = deptTasks.filter((t) => t.status !== 'completed');
 
@@ -85,23 +85,23 @@ function DepartmentCard({ dept, delay }: { dept: (typeof departments)[0]; delay:
             className="w-8 h-8 rounded-lg flex items-center justify-center"
             style={{ background: isBlue ? 'rgba(10,132,255,0.12)' : 'rgba(212,165,116,0.12)' }}
           >
-            <Users className="w-4 h-4" style={{ color: dept.colorHex }} />
+            <Users className="w-4 h-4" style={{ color: dept.colorHex || dept.color_hex }} />
           </div>
           <div className="flex-1">
             <h3 className="text-sm font-medium text-white">{dept.name}</h3>
-            <span className="text-xs text-gray-500">{dept.memberCount} 位成员</span>
+            <span className="text-xs text-gray-500">{dept.memberCount || dept.member_count} 位成员</span>
           </div>
           <span
             className="px-2 py-0.5 rounded-md text-[11px] font-medium"
-            style={{ background: isBlue ? 'rgba(10,132,255,0.12)' : 'rgba(212,165,116,0.12)', color: dept.colorHex }}
+            style={{ background: isBlue ? 'rgba(10,132,255,0.12)' : 'rgba(212,165,116,0.12)', color: dept.colorHex || dept.color_hex }}
           >
-            {dept.shortName}
+            {dept.shortName || dept.short_name}
           </span>
         </div>
 
         <div className="flex items-center gap-2 mb-3">
-          <img src={dept.head.avatar} alt={dept.head.name} className="w-6 h-6 rounded-md object-cover" />
-          <span className="text-xs text-gray-400">{dept.head.name} · {dept.head.role}</span>
+          <img src={dept.head?.avatar || dept.head?.avatar} alt={dept.head?.name || dept.head?.name} className="w-6 h-6 rounded-md object-cover" />
+          <span className="text-xs text-gray-400">{dept.head?.name || dept.head?.name} · {dept.head?.role || dept.head?.role}</span>
           <span className="ml-auto flex items-center gap-1">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-status-success opacity-75" />
@@ -119,7 +119,7 @@ function DepartmentCard({ dept, delay }: { dept: (typeof departments)[0]; delay:
 
         <div className="flex flex-wrap gap-1 mt-2">
           {projects
-            .filter((p) => p.involvedDepartments.includes(dept.name) && p.status === 'in-progress')
+            .filter((p) => (p.involvedDepartments || p.involved_departments || []).includes(dept.name) && p.status === 'in-progress')
             .map((p) => (
               <span
                 key={p.id}
@@ -140,7 +140,7 @@ function ProjectCard({
   index,
   onClick,
 }: {
-  project: Project;
+  project: any;
   index: number;
   onClick: () => void;
 }) {
@@ -172,7 +172,7 @@ function ProjectCard({
           >
             {project.status === 'in-progress' ? '进行中' : project.status === 'completed' ? '已完成' : '规划中'}
           </span>
-          {project.involvedDepartments.slice(0, 2).map((dept) => (
+          {(project.involvedDepartments || project.involved_departments || []).slice(0, 2).map((dept: string) => (
             <span
               key={dept}
               className="px-1.5 py-0.5 rounded text-[10px] font-medium border-l-[2px]"
@@ -185,8 +185,8 @@ function ProjectCard({
               {dept}
             </span>
           ))}
-          {project.involvedDepartments.length > 2 && (
-            <span className="text-[10px] text-gray-600">+{project.involvedDepartments.length - 2}</span>
+          {(project.involvedDepartments || project.involved_departments || []).length > 2 && (
+            <span className="text-[10px] text-gray-600">+{(project.involvedDepartments || project.involved_departments || []).length - 2}</span>
           )}
         </div>
 
@@ -196,9 +196,9 @@ function ProjectCard({
         <p className="text-xs text-gray-500 line-clamp-2 mb-3">{project.description}</p>
 
         {/* Mini cycle bar */}
-        {project.cycles.length > 0 && (
+        {(project.cycles || project.project_cycles || []).length > 0 && (
           <div className="flex items-center gap-1 mb-3">
-            {project.cycles.map((cycle, ci) => (
+            {(project.cycles || project.project_cycles || []).map((cycle: any, ci: number) => (
               <div key={cycle.id} className="flex-1 flex items-center">
                 <div
                   className="h-1 rounded-full flex-1"
@@ -211,7 +211,7 @@ function ProjectCard({
                           : '#1E1E24',
                   }}
                 />
-                {ci < project.cycles.length - 1 && <div className="w-0.5 h-0.5 bg-gray-700 rounded-full mx-0.5" />}
+                {ci < (project.cycles || project.project_cycles || []).length - 1 && <div className="w-0.5 h-0.5 bg-gray-700 rounded-full mx-0.5" />}
               </div>
             ))}
           </div>
@@ -220,7 +220,7 @@ function ProjectCard({
         {/* Progress */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[11px] text-gray-500">{project.completedTasks}/{project.taskCount} 任务</span>
+            <span className="text-[11px] text-gray-500">{project.completedTasks || project.completed_tasks}/{project.taskCount || project.task_count} 任务</span>
             <span className="text-xs font-mono text-gradient-blue-gold">{project.progress}%</span>
           </div>
           <AnimatedProgressBar
@@ -235,31 +235,31 @@ function ProjectCard({
         {/* Footer */}
         <div className="flex items-center justify-between mt-3 pt-3 border-t border-surface-tertiary">
           <div className="flex -space-x-2">
-            {project.workflow.slice(0, 3).map((node) => (
+            {(project.workflow || project.workflow_nodes || []).slice(0, 3).map((node: any) => (
               <div
                 key={node.id}
                 className="w-5 h-5 rounded border border-surface overflow-hidden"
-                title={`${node.agentName} · ${node.responsibility || node.agentRole}`}
+                title={`${node.agentName || node.agent_name} · ${node.responsibility || node.agentRole || node.agent_role}`}
               >
-                {node.agentAvatar ? (
-                  <img src={node.agentAvatar} alt={node.agentName} className="w-full h-full object-cover" />
+                {(node.agentAvatar || node.agent_avatar) ? (
+                  <img src={node.agentAvatar || node.agent_avatar} alt={node.agentName || node.agent_name} className="w-full h-full object-cover" />
                 ) : (
                   <div
                     className="w-full h-full flex items-center justify-center"
                     style={{
-                      background: node.departmentColor === 'blue' ? 'rgba(10,132,255,0.2)' : 'rgba(212,165,116,0.2)',
+                      background: (node.departmentColor || node.department_color) === 'blue' ? 'rgba(10,132,255,0.2)' : 'rgba(212,165,116,0.2)',
                     }}
                   >
-                    <span className="text-[7px]" style={{ color: node.departmentColor === 'blue' ? '#38BDF8' : '#F0C674' }}>
-                      {node.agentName[0]}
+                    <span className="text-[7px]" style={{ color: (node.departmentColor || node.department_color) === 'blue' ? '#38BDF8' : '#F0C674' }}>
+                      {(node.agentName || node.agent_name)?.[0]}
                     </span>
                   </div>
                 )}
               </div>
             ))}
-            {project.workflow.length > 3 && (
+            {(project.workflow || project.workflow_nodes || []).length > 3 && (
               <div className="w-5 h-5 rounded border border-surface bg-surface-tertiary flex items-center justify-center">
-                <span className="text-[7px] text-gray-500">+{project.workflow.length - 3}</span>
+                <span className="text-[7px] text-gray-500">+{(project.workflow || project.workflow_nodes || []).length - 3}</span>
               </div>
             )}
           </div>
@@ -271,7 +271,7 @@ function ProjectCard({
 }
 
 // ==================== Activity Timeline ====================
-function ActivityTimeline() {
+function ActivityTimeline({ activities }: { activities: any[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useGSAP(
@@ -297,15 +297,15 @@ function ActivityTimeline() {
           {index < 5 && <div className="absolute left-[7px] top-4 bottom-0 w-[2px] bg-surface-tertiary" />}
           <div
             className="w-4 h-4 rounded-full flex-shrink-0 mt-0.5 border-2 border-black"
-            style={{ background: activity.color === 'blue' ? '#0A84FF' : '#D4A574' }}
+            style={{ background: (activity.color === 'blue' || activity.color === 'blue') ? '#0A84FF' : '#D4A574' }}
           />
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-sm text-gray-300">{activity.user}</span>
+              <span className="text-sm text-gray-300">{activity.user || activity.user_name}</span>
               <span className="text-sm text-gray-500">{activity.action}</span>
               <span className="text-sm text-white">{activity.target}</span>
             </div>
-            <span className="text-xs text-gray-600 mt-0.5">{activity.timestamp}</span>
+            <span className="text-xs text-gray-600 mt-0.5">{activity.timestamp || activity.created_at}</span>
           </div>
         </div>
       ))}
@@ -314,7 +314,7 @@ function ActivityTimeline() {
 }
 
 // ==================== Task Summary ====================
-function TaskSummary() {
+function TaskSummary({ tasks }: { tasks: any[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeTasks = tasks.filter((t) => t.status !== 'completed').slice(0, 5);
 
@@ -358,20 +358,20 @@ function TaskSummary() {
             <p className="text-sm text-gray-300 truncate group-hover:text-white transition-colors">{task.title}</p>
             <p className="text-[11px] text-gray-600 flex items-center gap-1 mt-0.5">
               <ProjectIcon className="w-2.5 h-2.5" />
-              {task.projectName}
+              {task.projectName || task.project_name}
             </p>
           </div>
           <span
             className="px-1.5 py-0.5 rounded text-[10px] font-medium flex-shrink-0"
             style={{
-              background: task.departmentColor === 'blue' ? 'rgba(10,132,255,0.1)' : 'rgba(212,165,116,0.1)',
-              color: task.departmentColor === 'blue' ? '#0A84FF' : '#D4A574',
+              background: (task.departmentColor || task.department_color) === 'blue' ? 'rgba(10,132,255,0.1)' : 'rgba(212,165,116,0.1)',
+              color: (task.departmentColor || task.department_color) === 'blue' ? '#0A84FF' : '#D4A574',
             }}
           >
-            {task.department}
+            {task.department || task.department_id}
           </span>
           <img
-            src={task.assigneeAvatar}
+            src={task.assigneeAvatar || task.assignee_avatar}
             alt=""
             className="w-5 h-5 rounded-md object-cover flex-shrink-0"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
@@ -383,21 +383,27 @@ function TaskSummary() {
 }
 
 // ==================== Ring Chart ====================
-function RingChart() {
+function RingChart({ kpiData }: { kpiData: any }) {
   const svgRef = useRef<SVGSVGElement>(null);
 
   useGSAP(
     () => {
       if (!svgRef.current) return;
       const circles = svgRef.current.querySelectorAll('.ring-segment');
-      const total = kpiData.totalTasks;
-      const c1Len = 2 * Math.PI * 50 * (kpiData.completedTasks / total);
-      const c2Len = 2 * Math.PI * 50 * (kpiData.inProgressTasks / total);
+      const total = kpiData.totalTasks || kpiData.total_tasks || 0;
+      const completed = kpiData.completedTasks || kpiData.completed_tasks || 0;
+      const inProgress = kpiData.inProgressTasks || kpiData.in_progress_tasks || 0;
+      const pending = kpiData.pendingTasks || kpiData.pending_tasks || 0;
+      
+      if (total === 0) return;
+      
+      const c1Len = 2 * Math.PI * 50 * (completed / total);
+      const c2Len = 2 * Math.PI * 50 * (inProgress / total);
 
       gsap.set(circles[1], { strokeDasharray: `${c1Len} ${2 * Math.PI * 50}`, strokeDashoffset: 0 });
       gsap.set(circles[2], { strokeDasharray: `${c2Len} ${2 * Math.PI * 50}`, strokeDashoffset: -c1Len });
       gsap.set(circles[3], {
-        strokeDasharray: `${2 * Math.PI * 50 * (kpiData.pendingTasks / total)} ${2 * Math.PI * 50}`,
+        strokeDasharray: `${2 * Math.PI * 50 * (pending / total)} ${2 * Math.PI * 50}`,
         strokeDashoffset: -(c1Len + c2Len),
       });
 
@@ -412,6 +418,11 @@ function RingChart() {
     { scope: svgRef }
   );
 
+  const total = kpiData.totalTasks || kpiData.total_tasks || 0;
+  const completed = kpiData.completedTasks || kpiData.completed_tasks || 0;
+  const inProgress = kpiData.inProgressTasks || kpiData.in_progress_tasks || 0;
+  const pending = kpiData.pendingTasks || kpiData.pending_tasks || 0;
+
   return (
     <div className="flex flex-col items-center justify-center">
       <div className="relative w-40 h-40">
@@ -422,22 +433,22 @@ function RingChart() {
           <circle cx="60" cy="60" r="50" fill="none" stroke="#FFD60A" strokeWidth="10" strokeLinecap="round" className="ring-segment" />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
-          <span className="text-2xl font-semibold text-white font-mono">{kpiData.totalTasks}</span>
+          <span className="text-2xl font-semibold text-white font-mono">{total}</span>
           <span className="text-xs text-gray-500">总任务</span>
         </div>
       </div>
       <div className="flex items-center gap-6 mt-4">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-status-success" />
-          <span className="text-xs text-gray-400">已完成 {kpiData.completedTasks}</span>
+          <span className="text-xs text-gray-400">已完成 {completed}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-brand-blue" />
-          <span className="text-xs text-gray-400">进行中 {kpiData.inProgressTasks}</span>
+          <span className="text-xs text-gray-400">进行中 {inProgress}</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full bg-status-warning" />
-          <span className="text-xs text-gray-400">待处理 {kpiData.pendingTasks}</span>
+          <span className="text-xs text-gray-400">待处理 {pending}</span>
         </div>
       </div>
     </div>
@@ -447,7 +458,21 @@ function RingChart() {
 // ==================== Main Dashboard ====================
 export default function Dashboard() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const crossDeptProjects = projects.filter((p) => p.involvedDepartments.length > 1).length;
+  const { departments, projects, tasks, activities, stats } = useData();
+  
+  const crossDeptProjects = projects.filter((p) => (p.involvedDepartments || p.involved_departments || []).length > 1).length;
+  
+  // 从 stats 或计算 kpiData
+  const kpiData = stats || {
+    totalProjects: projects.length,
+    inProgress: projects.filter(p => p.status === 'in-progress').length,
+    completed: projects.filter(p => p.status === 'completed').length,
+    pending: projects.filter(p => p.status === 'planning').length,
+    totalTasks: tasks.length,
+    completedTasks: tasks.filter(t => t.status === 'completed').length,
+    inProgressTasks: tasks.filter(t => t.status === 'in-progress').length,
+    pendingTasks: tasks.filter(t => t.status === 'todo').length,
+  };
 
   return (
     <PageLayout title="总览" subtitle="启明科技 · 管理驾驶舱">
@@ -455,7 +480,6 @@ export default function Dashboard() {
       <div className="relative h-56 rounded-xl overflow-hidden mb-6">
         <GalaxyCanvas />
         <div className="absolute inset-0 flex flex-col justify-center px-6 lg:px-8" style={{ zIndex: 1 }}>
-          {/* GSAP SplitTextReveal — each character animates in with 3D perspective */}
           <SplitTextReveal
             text="启明科技 · 管理驾驶舱"
             tag="h2"
@@ -494,10 +518,10 @@ export default function Dashboard() {
 
       {/* KPI Cards with Shimmer hover */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard icon={FolderKanban} label="项目总数" value={kpiData.totalProjects} color="#0A84FF" trend="跨部门协作" delay={0.2} />
-        <KpiCard icon={Loader} label="进行中" value={kpiData.inProgress} color="#38BDF8" trend="+1 本周" delay={0.35} />
-        <KpiCard icon={CheckCircle} label="已完成" value={kpiData.completed} color="#30D158" trend="+1 本周" delay={0.5} />
-        <KpiCard icon={Clock} label="待处理" value={kpiData.pending} color="#FFD60A" trend="待启动" delay={0.65} />
+        <KpiCard icon={FolderKanban} label="项目总数" value={kpiData.totalProjects || kpiData.total_projects || 0} color="#0A84FF" trend="跨部门协作" delay={0.2} />
+        <KpiCard icon={Loader} label="进行中" value={kpiData.inProgress || kpiData.in_progress_projects || 0} color="#38BDF8" trend="+1 本周" delay={0.35} />
+        <KpiCard icon={CheckCircle} label="已完成" value={kpiData.completed || kpiData.completed_projects || 0} color="#30D158" trend="+1 本周" delay={0.5} />
+        <KpiCard icon={Clock} label="待处理" value={kpiData.pending || kpiData.pending_projects || 0} color="#FFD60A" trend="待启动" delay={0.65} />
       </div>
 
       {/* Departments + Activity */}
@@ -508,7 +532,7 @@ export default function Dashboard() {
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {departments.map((dept, i) => (
-              <DepartmentCard key={dept.id} dept={dept} delay={0.4 + i * 0.15} />
+              <DepartmentCard key={dept.id} dept={dept} delay={0.4 + i * 0.15} tasks={tasks} projects={projects} />
             ))}
           </div>
         </div>
@@ -518,7 +542,7 @@ export default function Dashboard() {
             <h3 className="text-lg font-medium text-white">最近动态</h3>
             <Zap className="w-4 h-4 text-brand-gold" />
           </div>
-          <ActivityTimeline />
+          <ActivityTimeline activities={activities} />
         </div>
       </div>
 
@@ -538,9 +562,9 @@ export default function Dashboard() {
             .map((project, index) => (
               <ProjectCard
                 key={project.id}
-                project={project}
+                project={project as unknown as Project}
                 index={index}
-                onClick={() => setSelectedProject(project)}
+                onClick={() => setSelectedProject(project as unknown as Project)}
               />
             ))}
         </div>
@@ -556,11 +580,11 @@ export default function Dashboard() {
               新建
             </button>
           </div>
-          <TaskSummary />
+          <TaskSummary tasks={tasks} />
         </div>
         <div className="bg-surface border border-surface-tertiary rounded-xl p-5 flex flex-col items-center justify-center">
           <h3 className="text-lg font-medium text-white mb-4 self-start">任务统计</h3>
-          <RingChart />
+          <RingChart kpiData={kpiData} />
         </div>
       </div>
 

@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Code, Palette, ChevronDown, ChevronUp, Users, FolderKanban, Sparkles } from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
-import { departments, projects } from '@/data';
+import { useData } from '@/hooks/useData';
 
-function AgentStoryCard({ dept }: { dept: (typeof departments)[0] }) {
+function AgentStoryCard({ dept, projects }: { dept: any; projects: any[] }) {
   const [expanded, setExpanded] = useState(false);
   const isBlue = dept.color === 'blue';
   const Icon = isBlue ? Code : Palette;
@@ -167,7 +167,7 @@ function AgentStoryCard({ dept }: { dept: (typeof departments)[0] }) {
 
               {/* Abilities */}
               <div className="flex flex-wrap gap-2 mt-4">
-                {dept.head.abilities.map((ability) => (
+                {dept.head.abilities.map((ability: string) => (
                   <span
                     key={ability}
                     className="px-2.5 py-1 rounded-md text-xs font-medium border"
@@ -252,6 +252,7 @@ function AgentStoryCard({ dept }: { dept: (typeof departments)[0] }) {
 }
 
 export default function Departments() {
+  const { departments, projects } = useData();
   return (
     <PageLayout title="部门与智能体" subtitle="管理组织架构，了解你的 AI 智能体团队">
       {/* Page Header */}
@@ -277,7 +278,7 @@ export default function Departments() {
       {/* Department Cards */}
       <div className="space-y-6">
         {departments.map((dept) => (
-          <AgentStoryCard key={dept.id} dept={dept} />
+          <AgentStoryCard key={dept.id} dept={dept} projects={projects} />
         ))}
       </div>
     </PageLayout>

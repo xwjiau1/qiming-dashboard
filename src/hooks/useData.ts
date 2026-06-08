@@ -1,11 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react'
 import {
   getDepartments, getAgents, getProjects, getTasks, getDocuments, getActivities, getDashboardStats,
-} from '@/hooks/useSupabase';
-import type {
-  DbDepartment, DbAgent, DbProject, DbTask, DbDocument, DbActivity, DbDashboardStats,
-} from '@/types/supabase';
-import { isSupabaseConfigured } from '@/lib/supabase';
+} from '@/hooks/useSupabase'
+import { isSupabaseConfigured } from '@/lib/supabase'
 
 // 静态数据作为离线备用
 import {
@@ -17,43 +14,43 @@ import {
   documents as staticDocuments,
   activities as staticActivities,
   kpiData as staticKpiData,
-} from '@/data';
+} from '@/data/static-data'
 
-// 将静态数据转换为符合 Db 类型的格式
-const staticAgents = [staticIrrAgent, staticMeryAgent];
+// 静态智能体列表
+const staticAgents = [staticIrrAgent, staticMeryAgent]
 
 export interface AppData {
-  departments: DbDepartment[];
-  agents: DbAgent[];
-  projects: DbProject[];
-  tasks: DbTask[];
-  documents: DbDocument[];
-  activities: DbActivity[];
-  stats: DbDashboardStats | null;
-  loading: boolean;
-  error: string | null;
-  refresh: () => void;
+  departments: any[]
+  agents: any[]
+  projects: any[]
+  tasks: any[]
+  documents: any[]
+  activities: any[]
+  stats: any
+  loading: boolean
+  error: string | null
+  refresh: () => void
 }
 
 export function useData(): AppData {
-  const [departments, setDepartments] = useState<DbDepartment[]>(staticDepartments as unknown as DbDepartment[]);
-  const [agents, setAgents] = useState<DbAgent[]>(staticAgents as unknown as DbAgent[]);
-  const [projects, setProjects] = useState<DbProject[]>(staticProjects as unknown as DbProject[]);
-  const [tasks, setTasks] = useState<DbTask[]>(staticTasks as unknown as DbTask[]);
-  const [documents, setDocuments] = useState<DbDocument[]>(staticDocuments as unknown as DbDocument[]);
-  const [activities, setActivities] = useState<DbActivity[]>(staticActivities as unknown as DbActivity[]);
-  const [stats, setStats] = useState<DbDashboardStats | null>(staticKpiData as unknown as DbDashboardStats);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [departments, setDepartments] = useState<any[]>(staticDepartments)
+  const [agents, setAgents] = useState<any[]>(staticAgents)
+  const [projects, setProjects] = useState<any[]>(staticProjects)
+  const [tasks, setTasks] = useState<any[]>(staticTasks)
+  const [documents, setDocuments] = useState<any[]>(staticDocuments)
+  const [activities, setActivities] = useState<any[]>(staticActivities)
+  const [stats, setStats] = useState<any>(staticKpiData)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
   const loadData = useCallback(async () => {
     if (!isSupabaseConfigured) {
-      setLoading(false);
-      return;
+      setLoading(false)
+      return
     }
 
-    setLoading(true);
-    setError(null);
+    setLoading(true)
+    setError(null)
 
     try {
       const [
@@ -72,26 +69,26 @@ export function useData(): AppData {
         getDocuments(),
         getActivities(20),
         getDashboardStats(),
-      ]);
+      ])
 
-      if (deptData.length) setDepartments(deptData);
-      if (agentData.length) setAgents(agentData);
-      if (projectData.length) setProjects(projectData);
-      if (taskData.length) setTasks(taskData);
-      if (docData.length) setDocuments(docData);
-      if (activityData.length) setActivities(activityData);
-      if (statsData) setStats(statsData);
+      if (deptData.length) setDepartments(deptData)
+      if (agentData.length) setAgents(agentData)
+      if (projectData.length) setProjects(projectData)
+      if (taskData.length) setTasks(taskData)
+      if (docData.length) setDocuments(docData)
+      if (activityData.length) setActivities(activityData)
+      if (statsData) setStats(statsData)
     } catch (err: any) {
-      console.error('数据加载失败:', err);
-      setError(err?.message || '数据加载失败');
+      console.error('数据加载失败:', err)
+      setError(err?.message || '数据加载失败')
     } finally {
-      setLoading(false);
+      setLoading(false)
     }
-  }, []);
+  }, [])
 
   useEffect(() => {
-    loadData();
-  }, [loadData]);
+    loadData()
+  }, [loadData])
 
   return {
     departments,
@@ -104,14 +101,5 @@ export function useData(): AppData {
     loading,
     error,
     refresh: loadData,
-  };
-}
-
-// 简化版：仅加载指定数据（占位，未使用）
-export function useDataPartial(_keys: ('departments' | 'agents' | 'projects' | 'tasks' | 'documents' | 'activities' | 'stats')[]) {
-  const fullData = useData();
-  return {
-    ...fullData,
-    loading: fullData.loading,
-  };
+  }
 }

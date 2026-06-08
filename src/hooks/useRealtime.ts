@@ -1,42 +1,26 @@
-import { useEffect, useRef } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { RealtimeChannel } from '@supabase/supabase-js';
+import { useEffect } from 'react'
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
 
-interface RealtimeConfig {
-  table: string;
-  event?: 'INSERT' | 'UPDATE' | 'DELETE' | '*';
-  filter?: string;
-  onPayload: (payload: any) => void;
-}
-
-export function useRealtime({ table, event = '*', filter, onPayload }: RealtimeConfig) {
-  const channelRef = useRef<RealtimeChannel | null>(null);
-  const callbackRef = useRef(onPayload);
-  callbackRef.current = onPayload;
-
+export function useRealtime(
+  table: string,
+  callback: (payload: any) => void,
+  event: 'INSERT' | 'UPDATE' | 'DELETE' | '*' = '*',
+  filter?: string
+) {
   useEffect(() => {
-    const channelName = `${table}-${filter || 'all'}`;
-    const channel = supabase
-      .channel(channelName)
-      .on(
-        'postgres_changes',
-        {
-          event,
-          schema: 'public',
-          table,
-          ...(filter ? { filter } : {}),
-        },
-        (payload) => {
-          callbackRef.current(payload);
-        }
-      )
-      .subscribe();
+    if (!isSupabaseConfigured) return
 
-    channelRef.current = channel;
+    const channel = supabase
+      .channel(`${table}_changes`)
+      .on(
+        'postgres_changes' as any,
+        { event, schema: 'public', table, filter },
+        callback
+      )
+      .subscribe()
 
     return () => {
-      channel.unsubscribe();
-      channelRef.current = null;
-    };
-  }, [table, event, filter]);
+      channel.unsubscribe()
+    }
+  }, [table, callback, event, filter])
 }

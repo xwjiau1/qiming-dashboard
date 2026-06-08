@@ -1,320 +1,230 @@
-import { supabase } from '@/lib/supabase';
-import type {
-  DbDepartment, DbAgent, DbProject, DbProjectCycle,
-  DbWorkflowNode, DbTask, DbDocument, DbActivity, DbUser,
-  DbDashboardStats
-} from '@/types/supabase';
+import { supabase, isSupabaseConfigured } from '@/lib/supabase'
+import {
+  departments as staticDepartments,
+  projects as staticProjects,
+  tasks as staticTasks,
+  documents as staticDocuments,
+  activities as staticActivities,
+  kpiData as staticKpiData,
+} from '@/data/static-data'
 
-// ==================== 部门 ====================
-export async function getDepartments(): Promise<DbDepartment[]> {
-  const { data, error } = await supabase
-    .from('departments')
-    .select('*, agents:head_agent_id(*)')
-    .order('id');
-  if (error) {
-    console.error('获取部门失败:', error);
-    return [];
+// ==================== 数据转换函数 ====================
+
+function dbToProject(db: any): any {
+  return {
+    ...db,
+    involvedDepartments: db.involved_departments || db.involvedDepartments || [],
+    taskCount: db.task_count || db.taskCount || 0,
+    completedTasks: db.completed_tasks || db.completedTasks || 0,
+    startDate: db.start_date || db.startDate || '',
+    leadAvatar: db.lead_avatar || db.leadAvatar || '',
+    leadRole: db.lead_role || db.leadRole || '',
+    updatedAt: db.updated_at || db.updatedAt || '',
+    cycles: db.project_cycles || db.cycles || [],
+    workflow: db.workflow_nodes || db.workflow || [],
   }
-  return (data || []) as DbDepartment[];
 }
 
-export async function getDepartmentById(id: string): Promise<DbDepartment | null> {
-  const { data, error } = await supabase
-    .from('departments')
-    .select('*, agents:head_agent_id(*)')
-    .eq('id', id)
-    .single();
-  if (error) return null;
-  return data as DbDepartment;
+function dbToTask(db: any): any {
+  return {
+    ...db,
+    projectId: db.project_id || db.projectId || '',
+    projectName: db.project_name || db.projectName || '',
+    departmentColor: db.department_color || db.departmentColor || 'blue',
+    assigneeAvatar: db.assignee_avatar || db.assigneeAvatar || '',
+    assigneeRole: db.assignee_role || db.assigneeRole || '',
+    dueDate: db.due_date || db.dueDate || '',
+    completedAt: db.completed_at || db.completedAt || undefined,
+  }
+}
+
+function dbToDocument(db: any): any {
+  return {
+    ...db,
+    departmentColor: db.department_color || db.departmentColor || 'blue',
+    updatedBy: db.updated_by || db.updatedBy || '',
+    updatedByAvatar: db.updated_by_avatar || db.updatedByAvatar || '',
+    updatedAt: db.updated_at || db.updatedAt || '',
+  }
+}
+
+function dbToActivity(db: any): any {
+  return {
+    ...db,
+    user: db.user_name || db.user || '',
+    userAvatar: db.user_avatar || db.userAvatar || '',
+    timestamp: db.created_at || db.timestamp || '',
+  }
+}
+
+// ==================== 部门 ====================
+
+export async function getDepartments() {
+  if (!isSupabaseConfigured) return staticDepartments
+  try {
+    const { data, error } = await supabase.from('departments').select('*').order('name')
+    if (error || !data?.length) return staticDepartments
+    return data.map((d: any) => ({
+      ...d,
+      shortName: d.short_name || d.shortName,
+      colorHex: d.color_hex || d.colorHex,
+      memberCount: d.member_count || d.memberCount,
+    }))
+  } catch {
+    return staticDepartments
+  }
 }
 
 // ==================== 智能体 ====================
-export async function getAgents(): Promise<DbAgent[]> {
-  const { data, error } = await supabase
-    .from('agents')
-    .select('*, departments:department_id(name,color_hex)')
-    .order('id');
-  if (error) {
-    console.error('获取智能体失败:', error);
-    return [];
+
+export async function getAgents() {
+  if (!isSupabaseConfigured) return []
+  try {
+    const { data, error } = await supabase.from('agents').select('*').order('name')
+    if (error || !data?.length) return []
+    return data.map((a: any) => ({
+      ...a,
+      colorTheme: a.color_theme || a.colorTheme,
+      departmentId: a.department_id,
+    }))
+  } catch {
+    return []
   }
-  return (data || []) as DbAgent[];
-}
-
-export async function getAgentById(id: string): Promise<DbAgent | null> {
-  const { data, error } = await supabase
-    .from('agents')
-    .select('*, departments:department_id(*)')
-    .eq('id', id)
-    .single();
-  if (error) return null;
-  return data as DbAgent;
-}
-
-export async function updateAgentStory(
-  id: string,
-  story: { summary: string; full: string },
-  abilities: string[]
-): Promise<any | null> {
-  const { data, error } = await supabase
-    .from('agents')
-    .update({ story, abilities } as never)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as DbAgent;
 }
 
 // ==================== 项目 ====================
-export async function getProjects(): Promise<DbProject[]> {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .order('created_at_timestamp', { ascending: false });
-  if (error) {
-    console.error('获取项目失败:', error);
-    return [];
-  }
-  return (data || []) as DbProject[];
-}
 
-export async function getProjectById(id: string): Promise<DbProject | null> {
-  const { data, error } = await supabase
-    .from('projects')
-    .select(`
-      *,
-      project_cycles(*),
-      workflow_nodes(*),
-      tasks(*)
-    `)
-    .eq('id', id)
-    .single();
-  if (error) return null;
-  return data as DbProject;
-}
-
-export async function getProjectsByStatus(status: string): Promise<DbProject[]> {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('*')
-    .eq('status', status)
-    .order('created_at_timestamp', { ascending: false });
-  if (error) return [];
-  return (data || []) as DbProject[];
-}
-
-export async function createProject(project: any): Promise<any | null> {
-  const { data, error } = await supabase
-    .from('projects')
-    .insert(project as never)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as DbProject;
-}
-
-export async function updateProject(id: string, updates: any): Promise<any | null> {
-  const { data, error } = await supabase
-    .from('projects')
-    .update(updates as never)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as DbProject;
-}
-
-export async function searchProjects(query: string): Promise<DbProject[]> {
-  const { data, error } = await supabase
-    .from('projects')
-    .select('id,name,status,progress,description')
-    .ilike('name', `%${query}%`);
-  if (error) return [];
-  return (data || []) as DbProject[];
-}
-
-// ==================== 项目周期 ====================
-export async function getProjectCycles(projectId: string): Promise<DbProjectCycle[]> {
-  const { data, error } = await supabase
-    .from('project_cycles')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('display_order');
-  if (error) return [];
-  return (data || []) as DbProjectCycle[];
-}
-
-// ==================== 协作流程节点 ====================
-export async function getWorkflowNodes(projectId: string): Promise<DbWorkflowNode[]> {
-  const { data, error } = await supabase
-    .from('workflow_nodes')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('display_order');
-  if (error) return [];
-  return (data || []) as DbWorkflowNode[];
-}
-
-export async function updateWorkflowNodeOrder(
-  nodes: { id: string; display_order: number; version: number }[]
-): Promise<void> {
-  for (const node of nodes) {
-    const { error } = await supabase
-      .from('workflow_nodes')
-      .update({ display_order: node.display_order, version: node.version + 1 } as never)
-      .eq('id', node.id)
-      .eq('version', node.version);
-    if (error) throw error;
+export async function getProjects() {
+  if (!isSupabaseConfigured) return staticProjects
+  try {
+    const { data, error } = await supabase.from('projects').select('*').order('created_at', { ascending: false })
+    if (error || !data?.length) return staticProjects
+    return data.map(dbToProject)
+  } catch {
+    return staticProjects
   }
 }
 
-export async function updateWorkflowResponsibility(
-  id: string,
-  responsibility: string
-): Promise<any | null> {
-  const { data, error } = await supabase
-    .from('workflow_nodes')
-    .update({ responsibility } as never)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as DbWorkflowNode;
+export async function getProjectById(id: string) {
+  if (!isSupabaseConfigured) return staticProjects.find(p => p.id === id) || null
+  try {
+    const { data, error } = await supabase.from('projects').select('*').eq('id', id).single()
+    if (error || !data) return staticProjects.find(p => p.id === id) || null
+    return dbToProject(data)
+  } catch {
+    return staticProjects.find(p => p.id === id) || null
+  }
+}
+
+export async function getProjectCycles(projectId: string) {
+  if (!isSupabaseConfigured) return staticProjects.find(p => p.id === projectId)?.cycles || []
+  try {
+    const { data, error } = await supabase.from('project_cycles').select('*').eq('project_id', projectId).order('start_date')
+    if (error || !data?.length) return staticProjects.find(p => p.id === projectId)?.cycles || []
+    return data
+  } catch {
+    return staticProjects.find(p => p.id === projectId)?.cycles || []
+  }
+}
+
+export async function getWorkflowNodes(projectId: string) {
+  if (!isSupabaseConfigured) return staticProjects.find(p => p.id === projectId)?.workflow || []
+  try {
+    const { data, error } = await supabase.from('workflow_nodes').select('*').eq('project_id', projectId).order('order_num')
+    if (error || !data?.length) return staticProjects.find(p => p.id === projectId)?.workflow || []
+    return data.map((w: any) => ({ ...w, departmentColor: w.department_color || w.departmentColor }))
+  } catch {
+    return staticProjects.find(p => p.id === projectId)?.workflow || []
+  }
 }
 
 // ==================== 任务 ====================
-export async function getTasks(): Promise<DbTask[]> {
-  const { data, error } = await supabase
-    .from('tasks')
-    .select('*')
-    .order('created_at', { ascending: false });
-  if (error) {
-    console.error('获取任务失败:', error);
-    return [];
+
+export async function getTasks() {
+  if (!isSupabaseConfigured) return staticTasks
+  try {
+    const { data, error } = await supabase.from('tasks').select('*').order('created_at', { ascending: false })
+    if (error || !data?.length) return staticTasks
+    return data.map(dbToTask)
+  } catch {
+    return staticTasks
   }
-  return (data || []) as DbTask[];
-}
-
-export async function getTasksByProject(projectId: string): Promise<DbTask[]> {
-  const { data, error } = await supabase
-    .from('tasks')
-    .select('*')
-    .eq('project_id', projectId)
-    .order('priority', { ascending: false });
-  if (error) return [];
-  return (data || []) as DbTask[];
-}
-
-export async function getTasksByStatus(status: string): Promise<DbTask[]> {
-  const { data, error } = await supabase
-    .from('tasks')
-    .select('*')
-    .eq('status', status)
-    .order('created_at', { ascending: false });
-  if (error) return [];
-  return (data || []) as DbTask[];
-}
-
-export async function createTask(task: any): Promise<any | null> {
-  const { data, error } = await supabase
-    .from('tasks')
-    .insert(task as never)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as DbTask;
-}
-
-export async function updateTask(id: string, updates: any): Promise<any | null> {
-  const { data, error } = await supabase
-    .from('tasks')
-    .update(updates as never)
-    .eq('id', id)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as DbTask;
 }
 
 // ==================== 文档 ====================
-export async function getDocuments(): Promise<DbDocument[]> {
-  const { data, error } = await supabase
-    .from('documents')
-    .select('*')
-    .order('updated_at_timestamp', { ascending: false });
-  if (error) {
-    console.error('获取文档失败:', error);
-    return [];
+
+export async function getDocuments() {
+  if (!isSupabaseConfigured) return staticDocuments
+  try {
+    const { data, error } = await supabase.from('documents').select('*').order('updated_at', { ascending: false })
+    if (error || !data?.length) return staticDocuments
+    return data.map(dbToDocument)
+  } catch {
+    return staticDocuments
   }
-  return (data || []) as DbDocument[];
 }
 
-export async function getDocumentsByType(type: string): Promise<DbDocument[]> {
-  const { data, error } = await supabase
-    .from('documents')
-    .select('*')
-    .eq('type', type)
-    .order('updated_at_timestamp', { ascending: false });
-  if (error) return [];
-  return (data || []) as DbDocument[];
-}
+// ==================== 动态 ====================
 
-export async function searchDocuments(query: string): Promise<DbDocument[]> {
-  const { data, error } = await supabase
-    .from('documents')
-    .select('*')
-    .ilike('name', `%${query}%`);
-  if (error) return [];
-  return (data || []) as DbDocument[];
-}
-
-export async function createDocument(doc: any): Promise<any | null> {
-  const { data, error } = await supabase
-    .from('documents')
-    .insert(doc as never)
-    .select()
-    .single();
-  if (error) throw error;
-  return data as DbDocument;
-}
-
-// ==================== 活动/动态 ====================
-export async function getActivities(limit = 20): Promise<DbActivity[]> {
-  const { data, error } = await supabase
-    .from('activities')
-    .select('*')
-    .order('created_at', { ascending: false })
-    .limit(limit);
-  if (error) {
-    console.error('获取活动失败:', error);
-    return [];
+export async function getActivities(limit: number = 20) {
+  if (!isSupabaseConfigured) return staticActivities
+  try {
+    const { data, error } = await supabase.from('activities').select('*').order('created_at', { ascending: false }).limit(limit)
+    if (error || !data?.length) return staticActivities
+    return data.map(dbToActivity)
+  } catch {
+    return staticActivities
   }
-  return (data || []) as DbActivity[];
 }
 
-// ==================== 仪表盘 KPI ====================
-export async function getDashboardStats(): Promise<DbDashboardStats | null> {
-  const { data, error } = await supabase
-    .from('dashboard_stats')
-    .select('*')
-    .single();
-  if (error) {
-    console.error('获取仪表盘统计失败:', error);
-    return null;
+// ==================== 仪表盘统计 ====================
+
+export async function getDashboardStats() {
+  if (!isSupabaseConfigured) return staticKpiData
+  try {
+    const { data: projects, error: pErr } = await supabase.from('projects').select('status')
+    const { data: tasks, error: tErr } = await supabase.from('tasks').select('status')
+    if (pErr || tErr || !projects || !tasks) return staticKpiData
+
+    return {
+      totalProjects: projects.length,
+      inProgress: projects.filter((p: any) => p.status === 'in_progress').length,
+      completed: projects.filter((p: any) => p.status === 'completed').length,
+      pending: projects.filter((p: any) => p.status === 'planning').length,
+      totalTasks: tasks.length,
+      completedTasks: tasks.filter((t: any) => t.status === 'completed').length,
+      inProgressTasks: tasks.filter((t: any) => t.status === 'in_progress').length,
+      pendingTasks: tasks.filter((t: any) => t.status === 'todo').length,
+    }
+  } catch {
+    return staticKpiData
   }
-  return data as DbDashboardStats;
 }
 
 // ==================== 用户 ====================
-export async function getCurrentUser(): Promise<DbUser | null> {
-  const { data: authUser } = await supabase.auth.getUser();
-  if (!authUser.user) return null;
-  const { data, error } = await supabase
-    .from('users')
-    .select('*')
-    .eq('id', authUser.user.id)
-    .single();
-  if (error) return null;
-  return data as DbUser;
+
+export async function getCurrentUser() {
+  if (!isSupabaseConfigured) return null
+  try {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return null
+    const { data } = await supabase.from('users').select('*').eq('id', user.id).single()
+    return data || null
+  } catch {
+    return null
+  }
+}
+
+// ==================== 复合数据加载 ====================
+
+export async function loadAllData() {
+  const [departments, projects, tasks, documents, activities, stats] = await Promise.all([
+    getDepartments(),
+    getProjects(),
+    getTasks(),
+    getDocuments(),
+    getActivities(),
+    getDashboardStats(),
+  ])
+  return { departments, projects, tasks, documents, activities, stats }
 }

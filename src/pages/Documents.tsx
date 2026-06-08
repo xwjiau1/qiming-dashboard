@@ -13,7 +13,8 @@ import {
   Download,
 } from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
-import { documents, docTypeConfig, docStatusConfig } from '@/data';
+import { useData } from '@/hooks/useData';
+import { docTypeConfig, docStatusConfig, type Document } from '@/data/static-data';
 
 type DocTypeFilter = 'all' | 'technical' | 'design' | 'product' | 'meeting' | 'architecture';
 
@@ -34,7 +35,7 @@ const typeIconMap: Record<string, React.ElementType> = {
   architecture: Cpu,
 };
 
-function DocumentRow({ doc, index }: { doc: (typeof documents)[0]; index: number }) {
+function DocumentRow({ doc, index }: { doc: Document; index: number }) {
   const isBlue = doc.departmentColor === 'blue';
   const typeConfig = docTypeConfig[doc.type];
   const statusConfig = docStatusConfig[doc.status];
@@ -121,6 +122,7 @@ function DocumentRow({ doc, index }: { doc: (typeof documents)[0]; index: number
 }
 
 export default function Documents() {
+  const { documents } = useData();
   const [activeFilter, setActiveFilter] = useState<DocTypeFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
 

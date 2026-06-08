@@ -10,7 +10,7 @@ import {
 } from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
 import ProjectDetailModal from '@/components/ProjectDetailModal';
-import { projects, tasks } from '@/data';
+import { useData } from '@/hooks/useData';
 import type { Project } from '@/data';
 
 type StatusFilter = 'all' | 'in-progress' | 'completed' | 'planning';
@@ -188,6 +188,7 @@ function ProjectCard({
 }
 
 export default function Projects() {
+  const { projects, tasks } = useData();
   const [activeFilter, setActiveFilter] = useState<StatusFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
@@ -198,7 +199,7 @@ export default function Projects() {
       if (searchQuery && !p.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
       return true;
     });
-  }, [activeFilter, searchQuery]);
+  }, [activeFilter, searchQuery, projects]);
 
   return (
     <PageLayout title="项目管理" subtitle="公司级项目管理，跨部门协作">
