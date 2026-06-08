@@ -3,18 +3,20 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FileText,
   Search,
-  Upload,
   FileCode,
   Palette,
   Package,
   Calendar,
   Cpu,
   Eye,
-  Download,
+  Plus,
+  Trash2,
 } from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
 import { useData } from '@/hooks/useData';
 import { docTypeConfig, docStatusConfig, type Document } from '@/data/static-data';
+import DocumentFormDialog from '@/components/crud/DocumentFormDialog';
+import DeleteConfirmDialog from '@/components/crud/DeleteConfirmDialog';
 
 type DocTypeFilter = 'all' | 'technical' | 'design' | 'product' | 'meeting' | 'architecture';
 
@@ -113,8 +115,8 @@ function DocumentRow({ doc, index }: { doc: Document; index: number }) {
         <button className="w-7 h-7 rounded flex items-center justify-center text-gray-500 hover:text-brand-blue hover:bg-brand-blue/10 transition-colors">
           <Eye className="w-3.5 h-3.5" />
         </button>
-        <button className="w-7 h-7 rounded flex items-center justify-center text-gray-500 hover:text-brand-gold hover:bg-brand-gold/10 transition-colors">
-          <Download className="w-3.5 h-3.5" />
+        <button className="w-7 h-7 rounded flex items-center justify-center text-gray-500 hover:text-red-400 hover:bg-red-500/10 transition-colors">
+          <Trash2 className="w-3.5 h-3.5" />
         </button>
       </div>
     </motion.div>
@@ -122,9 +124,11 @@ function DocumentRow({ doc, index }: { doc: Document; index: number }) {
 }
 
 export default function Documents() {
-  const { documents } = useData();
+  const { documents, agents, addDocument, removeDocument } = useData();
   const [activeFilter, setActiveFilter] = useState<DocTypeFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [docFormOpen, setDocFormOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; title: string }>({ open: false, id: '', title: '' });
 
   const filteredDocs = documents.filter((d) => {
     if (activeFilter !== 'all' && d.type !== activeFilter) return false;
@@ -146,9 +150,9 @@ export default function Documents() {
             className="w-full h-10 pl-10 pr-4 bg-surface border border-surface-tertiary rounded-lg text-sm text-gray-300 placeholder-gray-600 focus:outline-none focus:border-brand-blue focus:ring-1 focus:ring-brand-blue/20 transition-all"
           />
         </div>
-        <button className="flex items-center gap-2 px-4 py-2.5 bg-brand-blue text-white text-sm font-medium rounded-lg hover:bg-brand-blue-dark transition-colors">
-          <Upload className="w-4 h-4" />
-          上传文档
+        <button onClick={() => setDocFormOpen(true)} className="flex items-center gap-2 px-4 py-2.5 bg-brand-blue text-white text-sm font-medium rounded-lg hover:bg-brand-blue-dark transition-colors">
+          <Plus className="w-4 h-4" />
+          新建文档
         </button>
       </div>
 
@@ -209,6 +213,20 @@ export default function Documents() {
           </div>
         )}
       </div>
+
+      <DocumentFormDialog
+        open={docFormOpen}
+        onOpenChange={setDocFormOpen}
+        onSubmit={addDocument}
+        agents={agents}
+      />
+      <DeleteConfirmDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm((prev) => ({ ...prev, open }))}
+        title="删除文档"
+        description={`确定要删除 "${deleteConfirm.title}" 吗？此操作不可撤销。`}
+        onConfirm={() => { removeDocument(deleteConfirm.id); setDeleteConfirm({ open: false, id: '', title: '' }); }}
+      />
     </PageLayout>
   );
 }

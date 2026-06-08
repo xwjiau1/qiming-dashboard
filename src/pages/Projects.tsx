@@ -12,6 +12,8 @@ import PageLayout from '@/components/layout/PageLayout';
 import ProjectDetailModal from '@/components/ProjectDetailModal';
 import { useData } from '@/hooks/useData';
 import type { Project } from '@/data';
+import ProjectFormDialog from '@/components/crud/ProjectFormDialog';
+import DeleteConfirmDialog from '@/components/crud/DeleteConfirmDialog';
 
 type StatusFilter = 'all' | 'in-progress' | 'completed' | 'planning';
 
@@ -188,10 +190,12 @@ function ProjectCard({
 }
 
 export default function Projects() {
-  const { projects, tasks } = useData();
+  const { projects, tasks, agents, addProject, removeProject } = useData();
   const [activeFilter, setActiveFilter] = useState<StatusFilter>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [projectFormOpen, setProjectFormOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; title: string }>({ open: false, id: '', title: '' });
 
   const filteredProjects = useMemo(() => {
     return projects.filter((p) => {
@@ -238,7 +242,7 @@ export default function Projects() {
             <SlidersHorizontal className="w-4 h-4" />
             <span className="text-sm hidden sm:inline">排序</span>
           </button>
-          <button className="flex items-center gap-2 px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-lg hover:bg-brand-blue-dark transition-colors">
+          <button onClick={() => setProjectFormOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-lg hover:bg-brand-blue-dark transition-colors">
             <Plus className="w-4 h-4" />
             <span className="hidden sm:inline">新建项目</span>
           </button>
@@ -288,6 +292,20 @@ export default function Projects() {
           />
         )}
       </AnimatePresence>
+
+      <ProjectFormDialog
+        open={projectFormOpen}
+        onOpenChange={setProjectFormOpen}
+        onSubmit={addProject}
+        agents={agents}
+      />
+      <DeleteConfirmDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm((prev) => ({ ...prev, open }))}
+        title="删除项目"
+        description={`确定要删除 "${deleteConfirm.title}" 吗？此操作不可撤销。`}
+        onConfirm={() => { removeProject(deleteConfirm.id); setDeleteConfirm({ open: false, id: '', title: '' }); }}
+      />
     </PageLayout>
   );
 }

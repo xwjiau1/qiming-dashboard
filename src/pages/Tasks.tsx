@@ -7,10 +7,15 @@ import {
   List,
   GripVertical,
   FolderKanban,
+  Trash2,
+  ArrowRight,
+  ArrowLeft,
 } from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
 import { useData } from '@/hooks/useData';
 import { priorityConfig, type Task } from '@/data/static-data';
+import TaskFormDialog from '@/components/crud/TaskFormDialog';
+import DeleteConfirmDialog from '@/components/crud/DeleteConfirmDialog';
 
 type ViewMode = 'board' | 'list';
 type StatusColumn = 'todo' | 'in-progress' | 'review' | 'completed';
@@ -33,13 +38,30 @@ function TaskCard({
   task,
   index,
   columnIndex,
+  onDelete,
+  onMove,
 }: {
   task: Task;
   index: number;
   columnIndex: number;
+  onDelete: (id: string) => void;
+  onMove: (id: string, status: string) => void;
 }) {
   const isBlue = task.departmentColor === 'blue';
   const priority = priorityConfig[task.priority];
+
+  const nextStatus: Record<string, string> = {
+    todo: 'in-progress',
+    'in-progress': 'review',
+    review: 'completed',
+    completed: 'completed',
+  };
+  const prevStatus: Record<string, string> = {
+    todo: 'todo',
+    'in-progress': 'todo',
+    review: 'in-progress',
+    completed: 'review',
+  };
 
   return (
     <motion.div
@@ -57,12 +79,27 @@ function TaskCard({
         }}
       />
 
-      {/* Project badge */}
-      <div className="flex items-center gap-2 mb-2">
+      {/* Project badge + Actions */}
+      <div className="flex items-center justify-between mb-2">
         <span className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-medium bg-surface-secondary border border-surface-tertiary text-gray-400">
           <FolderKanban className="w-2.5 h-2.5" />
           {task.projectName}
         </span>
+        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+          {task.status !== 'todo' && (
+            <button onClick={() => onMove(task.id, prevStatus[task.status])} className="p-1 rounded hover:bg-surface-secondary text-gray-500" title="移到上一步">
+              <ArrowLeft className="w-3 h-3" />
+            </button>
+          )}
+          {task.status !== 'completed' && (
+            <button onClick={() => onMove(task.id, nextStatus[task.status])} className="p-1 rounded hover:bg-surface-secondary text-gray-500" title="移到下一步">
+              <ArrowRight className="w-3 h-3" />
+            </button>
+          )}
+          <button onClick={() => onDelete(task.id)} className="p-1 rounded hover:bg-red-500/10 text-red-400" title="删除">
+            <Trash2 className="w-3 h-3" />
+          </button>
+        </div>
       </div>
 
       {/* Title */}
@@ -184,10 +221,12 @@ function ListRow({ task, index }: { task: Task; index: number }) {
 }
 
 export default function Tasks() {
-  const { tasks, projects } = useData();
+  const { tasks, projects, agents, addTask, editTask, removeTask } = useData();
   const [viewMode, setViewMode] = useState<ViewMode>('board');
   const [projectFilter, setProjectFilter] = useState<string>('all');
   const [priorityFilter, setPriorityFilter] = useState<string>('all');
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ open: boolean; id: string; title: string }>({ open: false, id: '', title: '' });
 
   const filteredTasks = useMemo(() => {
     return tasks.filter((t: any) => {
@@ -196,6 +235,20 @@ export default function Tasks() {
       return true;
     });
   }, [projectFilter, priorityFilter, tasks]);
+
+  const handleDelete = (id: string) => {
+    const task = tasks.find((t: any) => t.id === id);
+    if (task) setDeleteConfirm({ open: true, id, title: task.title });
+  };
+
+  const confirmDelete = () => {
+    removeTask(deleteConfirm.id);
+    setDeleteConfirm({ open: false, id: '', title: '' });
+  };
+
+  const handleMove = (id: string, status: string) => {
+    editTask(id, { status });
+  };
 
   return (
     <PageLayout title="任务管理" subtitle="追踪任务进度，任务与项目关联">
@@ -251,7 +304,7 @@ export default function Tasks() {
           </select>
         </div>
 
-        <button className="flex items-center gap-2 px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-lg hover:bg-brand-blue-dark transition-colors">
+        <button onClick={() => setTaskFormOpen(true)} className="flex items-center gap-2 px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-lg hover:bg-brand-blue-dark transition-colors">
           <Plus className="w-4 h-4" />
           新建任务
         </button>
@@ -285,7 +338,7 @@ export default function Tasks() {
                   {/* Task Cards */}
                   <div className="space-y-3 flex-1">
                     {colTasks.map((task: any, index: number) => (
-                      <TaskCard key={task.id} task={task} index={index} columnIndex={colIndex} />
+                      <TaskCard key={task.id} task={task} index={index} columnIndex={colIndex} onDelete={handleDelete} onMove={handleMove} />
                     ))}
                     {colTasks.length === 0 && (
                       <div className="flex items-center justify-center py-8 border border-dashed border-surface-tertiary rounded-xl">
@@ -332,6 +385,21 @@ export default function Tasks() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <TaskFormDialog
+        open={taskFormOpen}
+        onOpenChange={setTaskFormOpen}
+        onSubmit={addTask}
+        projects={projects}
+        agents={agents}
+      />
+      <DeleteConfirmDialog
+        open={deleteConfirm.open}
+        onOpenChange={(open) => setDeleteConfirm((prev) => ({ ...prev, open }))}
+        title="删除任务"
+        description={`确定要删除 "${deleteConfirm.title}" 吗？此操作不可撤销。`}
+        onConfirm={confirmDelete}
+      />
     </PageLayout>
   );
 }

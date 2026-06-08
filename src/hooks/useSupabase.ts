@@ -215,6 +215,138 @@ export async function getCurrentUser() {
   }
 }
 
+// ==================== CRUD 操作 ====================
+
+export async function createProject(project: any) {
+  if (!isSupabaseConfigured) return { data: null, error: new Error('Supabase 未配置') }
+  try {
+    const { data, error } = await supabase.from('projects').insert([project]).select().single()
+    return { data, error }
+  } catch (err: any) {
+    return { data: null, error: err }
+  }
+}
+
+export async function updateProject(id: string, updates: any) {
+  if (!isSupabaseConfigured) return { data: null, error: new Error('Supabase 未配置') }
+  try {
+    const { data, error } = await supabase.from('projects').update(updates).eq('id', id).select().single()
+    return { data, error }
+  } catch (err: any) {
+    return { data: null, error: err }
+  }
+}
+
+export async function deleteProject(id: string) {
+  if (!isSupabaseConfigured) return { error: new Error('Supabase 未配置') }
+  try {
+    const { error } = await supabase.from('projects').delete().eq('id', id)
+    return { error }
+  } catch (err: any) {
+    return { error: err }
+  }
+}
+
+export async function createTask(task: any) {
+  if (!isSupabaseConfigured) return { data: null, error: new Error('Supabase 未配置') }
+  try {
+    const { data, error } = await supabase.from('tasks').insert([task]).select().single()
+    return { data, error }
+  } catch (err: any) {
+    return { data: null, error: err }
+  }
+}
+
+export async function updateTask(id: string, updates: any) {
+  if (!isSupabaseConfigured) return { data: null, error: new Error('Supabase 未配置') }
+  try {
+    const { data, error } = await supabase.from('tasks').update(updates).eq('id', id).select().single()
+    return { data, error }
+  } catch (err: any) {
+    return { data: null, error: err }
+  }
+}
+
+export async function deleteTask(id: string) {
+  if (!isSupabaseConfigured) return { error: new Error('Supabase 未配置') }
+  try {
+    const { error } = await supabase.from('tasks').delete().eq('id', id)
+    return { error }
+  } catch (err: any) {
+    return { error: err }
+  }
+}
+
+export async function createDocument(doc: any) {
+  if (!isSupabaseConfigured) return { data: null, error: new Error('Supabase 未配置') }
+  try {
+    const { data, error } = await supabase.from('documents').insert([doc]).select().single()
+    return { data, error }
+  } catch (err: any) {
+    return { data: null, error: err }
+  }
+}
+
+export async function updateDocument(id: string, updates: any) {
+  if (!isSupabaseConfigured) return { data: null, error: new Error('Supabase 未配置') }
+  try {
+    const { data, error } = await supabase.from('documents').update(updates).eq('id', id).select().single()
+    return { data, error }
+  } catch (err: any) {
+    return { data: null, error: err }
+  }
+}
+
+export async function deleteDocument(id: string) {
+  if (!isSupabaseConfigured) return { error: new Error('Supabase 未配置') }
+  try {
+    const { error } = await supabase.from('documents').delete().eq('id', id)
+    return { error }
+  } catch (err: any) {
+    return { error: err }
+  }
+}
+
+export async function createActivity(activity: any) {
+  if (!isSupabaseConfigured) return { data: null, error: new Error('Supabase 未配置') }
+  try {
+    const { data, error } = await supabase.from('activities').insert([activity]).select().single()
+    return { data, error }
+  } catch (err: any) {
+    return { data: null, error: err }
+  }
+}
+
+// ==================== 实时订阅 ====================
+
+export function subscribeToTasks(callback: (payload: any) => void) {
+  if (!isSupabaseConfigured) return null
+  return supabase
+    .channel('tasks-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'tasks' }, callback)
+    .subscribe()
+}
+
+export function subscribeToProjects(callback: (payload: any) => void) {
+  if (!isSupabaseConfigured) return null
+  return supabase
+    .channel('projects-realtime')
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'projects' }, callback)
+    .subscribe()
+}
+
+export function subscribeToActivities(callback: (payload: any) => void) {
+  if (!isSupabaseConfigured) return null
+  return supabase
+    .channel('activities-realtime')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'activities' }, callback)
+    .subscribe()
+}
+
+export function unsubscribe(channel: any) {
+  if (channel) channel.unsubscribe()
+}
+
 // ==================== 复合数据加载 ====================
 
 export async function loadAllData() {

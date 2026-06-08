@@ -22,6 +22,8 @@ import SplitTextReveal from '@/components/gsap/SplitTextReveal';
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber';
 import { useData } from '@/hooks/useData';
 import type { Project } from '@/data';
+import ProjectFormDialog from '@/components/crud/ProjectFormDialog';
+import TaskFormDialog from '@/components/crud/TaskFormDialog';
 
 // ==================== GSAP KPI Card ====================
 function KpiCard({
@@ -394,9 +396,9 @@ function RingChart({ kpiData }: { kpiData: any }) {
       const completed = kpiData.completedTasks || kpiData.completed_tasks || 0;
       const inProgress = kpiData.inProgressTasks || kpiData.in_progress_tasks || 0;
       const pending = kpiData.pendingTasks || kpiData.pending_tasks || 0;
-      
+
       if (total === 0) return;
-      
+
       const c1Len = 2 * Math.PI * 50 * (completed / total);
       const c2Len = 2 * Math.PI * 50 * (inProgress / total);
 
@@ -458,10 +460,12 @@ function RingChart({ kpiData }: { kpiData: any }) {
 // ==================== Main Dashboard ====================
 export default function Dashboard() {
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  const { departments, projects, tasks, activities, stats } = useData();
-  
+  const [projectFormOpen, setProjectFormOpen] = useState(false);
+  const [taskFormOpen, setTaskFormOpen] = useState(false);
+  const { departments, projects, tasks, activities, stats, agents, addProject, addTask } = useData();
+
   const crossDeptProjects = projects.filter((p) => (p.involvedDepartments || p.involved_departments || []).length > 1).length;
-  
+
   // 从 stats 或计算 kpiData
   const kpiData = stats || {
     totalProjects: projects.length,
@@ -504,11 +508,11 @@ export default function Dashboard() {
           />
 
           <div className="flex items-center gap-3 mt-5" style={{ opacity: 1 }}>
-            <button className="hero-btn flex items-center gap-2 px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-lg hover:bg-brand-blue-dark transition-colors">
+            <button onClick={() => setProjectFormOpen(true)} className="hero-btn flex items-center gap-2 px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-lg hover:bg-brand-blue-dark transition-colors">
               <Plus className="w-4 h-4" />
               新建项目
             </button>
-            <button className="hero-btn flex items-center gap-2 px-4 py-2 bg-surface-secondary border border-surface-tertiary text-gray-300 text-sm font-medium rounded-lg hover:bg-surface-tertiary transition-colors">
+            <button onClick={() => setTaskFormOpen(true)} className="hero-btn flex items-center gap-2 px-4 py-2 bg-surface-secondary border border-surface-tertiary text-gray-300 text-sm font-medium rounded-lg hover:bg-surface-tertiary transition-colors">
               <Plus className="w-4 h-4" />
               新建任务
             </button>
@@ -575,7 +579,7 @@ export default function Dashboard() {
         <div className="bg-surface border border-surface-tertiary rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-lg font-medium text-white">待办任务</h3>
-            <button className="flex items-center gap-1 px-3 py-1.5 bg-brand-blue text-white text-xs font-medium rounded-lg hover:bg-brand-blue-dark transition-colors">
+            <button onClick={() => setTaskFormOpen(true)} className="flex items-center gap-1 px-3 py-1.5 bg-brand-blue text-white text-xs font-medium rounded-lg hover:bg-brand-blue-dark transition-colors">
               <Plus className="w-3 h-3" />
               新建
             </button>
@@ -598,6 +602,20 @@ export default function Dashboard() {
           />
         )}
       </AnimatePresence>
+
+      <ProjectFormDialog
+        open={projectFormOpen}
+        onOpenChange={setProjectFormOpen}
+        onSubmit={addProject}
+        agents={agents}
+      />
+      <TaskFormDialog
+        open={taskFormOpen}
+        onOpenChange={setTaskFormOpen}
+        onSubmit={addTask}
+        projects={projects}
+        agents={agents}
+      />
     </PageLayout>
   );
 }
