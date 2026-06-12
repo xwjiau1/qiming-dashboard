@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../database/数据库.ts';
 import { recordTaskActivity } from '../middleware/动态记录.ts';
+import { keysToCamelCase, successResponse, errorResponse } from '../utils/serializer.ts';
 
 const router = Router();
 
@@ -19,51 +20,19 @@ router.get('/', (req, res) => {
   sql += ' ORDER BY updated_at DESC';
 
   const rows = db.prepare(sql).all(...params) as any[];
-  const tasks = rows.map((row) => ({
-    id: row.id,
-    title: row.title,
-    priority: row.priority,
-    status: row.status,
-    projectId: row.project_id,
-    projectName: row.project_name,
-    department: row.department,
-    departmentColor: row.department_color,
-    type: row.type,
-    assignee: row.assignee_name,
-    assigneeAvatar: row.assignee_avatar,
-    assigneeRole: row.assignee_role,
-    dueDate: row.due_date,
-    completedAt: row.completed_at,
-    description: row.description,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  }));
-  res.json({ success: true, data: tasks });
+  res.json(successResponse(rows.map((row) => {
+    const task = keysToCamelCase(row);
+    delete (task as any).assigneeId; // 前端只需要 assignee/assigneeAvatar/assigneeRole
+    return task;
+  })));
 });
 
 router.get('/:id', (req, res) => {
   const row = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id) as any;
-  if (!row) return res.status(404).json({ success: false, error: '任务不存在' });
-  const task = {
-    id: row.id,
-    title: row.title,
-    priority: row.priority,
-    status: row.status,
-    projectId: row.project_id,
-    projectName: row.project_name,
-    department: row.department,
-    departmentColor: row.department_color,
-    type: row.type,
-    assignee: row.assignee_name,
-    assigneeAvatar: row.assignee_avatar,
-    assigneeRole: row.assignee_role,
-    dueDate: row.due_date,
-    completedAt: row.completed_at,
-    description: row.description,
-    createdAt: row.created_at,
-    updatedAt: row.updated_at,
-  };
-  res.json({ success: true, data: task });
+  if (!row) return res.status(404).json(errorResponse('任务不存在'));
+  const task = keysToCamelCase(row);
+  delete (task as any).assigneeId;
+  res.json(successResponse(task));
 });
 
 router.post('/', (req, res) => {
@@ -86,14 +55,14 @@ router.post('/', (req, res) => {
   );
 
   recordTaskActivity('创建了任务', title, id, deptColor);
-  res.json({ success: true, data: { id } });
+  res.json(successResponse({ id }));
 });
 
 router.patch('/:id', (req, res) => {
   const { status, priority, assigneeId } = req.body;
   const now = Date.now();
   const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id) as any;
-  if (!task) return res.status(404).json({ success: false, error: '任务不存在' });
+  if (!task) return res.status(404).json(errorResponse('任务不存在'));
 
   const updates: string[] = [];
   const params: any[] = [];
@@ -118,7 +87,7 @@ router.patch('/:id', (req, res) => {
     recordTaskActivity(action, task.title, task.id, task.department_color || 'blue');
   }
 
-  res.json({ success: true, data: { id: req.params.id } });
+  res.json(successResponse({ id: req.params.id }));
 });
 
 export default router;

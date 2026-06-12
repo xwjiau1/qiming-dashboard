@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../database/数据库.ts';
 import { recordDocActivity } from '../middleware/动态记录.ts';
+import { keysToCamelCase, successResponse, errorResponse } from '../utils/serializer.ts';
 
 const router = Router();
 
@@ -16,37 +17,24 @@ router.get('/', (req, res) => {
   sql += ' ORDER BY updated_at_ts DESC';
 
   const rows = db.prepare(sql).all(...params) as any[];
-  const documents = rows.map((row) => ({
-    id: row.id,
-    name: row.name,
-    type: row.type,
-    department: row.department,
-    departmentColor: row.department_color,
-    updatedBy: row.updated_by_name,
-    updatedByAvatar: row.updated_by_avatar,
-    updatedAt: row.updated_at,
-    status: row.status,
-    createdAt: row.created_at,
-  }));
-  res.json({ success: true, data: documents });
+  res.json(successResponse(rows.map((row) => {
+    const doc = keysToCamelCase(row);
+    delete (doc as any).updatedById; // 前端只需要 updatedBy
+    delete (doc as any).updatedAtTs; // 前端只需要 updatedAt
+    delete (doc as any).updatedAtMeta; // 内部字段
+    delete (doc as any).content; // 暂不返回内容
+    return doc;
+  })));
 });
 
 router.get('/:id', (req, res) => {
   const row = db.prepare('SELECT * FROM documents WHERE id = ?').get(req.params.id) as any;
-  if (!row) return res.status(404).json({ success: false, error: '文档不存在' });
-  const doc = {
-    id: row.id,
-    name: row.name,
-    type: row.type,
-    department: row.department,
-    departmentColor: row.department_color,
-    updatedBy: row.updated_by_name,
-    updatedByAvatar: row.updated_by_avatar,
-    updatedAt: row.updated_at,
-    status: row.status,
-    createdAt: row.created_at,
-  };
-  res.json({ success: true, data: doc });
+  if (!row) return res.status(404).json(errorResponse('文档不存在'));
+  const doc = keysToCamelCase(row);
+  delete (doc as any).updatedById;
+  delete (doc as any).updatedAtTs;
+  delete (doc as any).updatedAtMeta;
+  res.json(successResponse(doc));
 });
 
 router.post('/', (req, res) => {
@@ -62,7 +50,7 @@ router.post('/', (req, res) => {
   stmt.run(id, name, type, department, deptColor, now, status, now, now);
 
   recordDocActivity('创建了文档', name, id, deptColor);
-  res.json({ success: true, data: { id } });
+  res.json(successResponse({ id }));
 });
 
 export default router;

@@ -1,0 +1,38 @@
+# 依赖目录
+node_modules/
+src/frontend/node_modules/
+
+# 构建产物
+dist/
+
+# 本地环境文件
+.env
+.env.local
+
+# 数据库文件（生产环境应排除，但演示项目保留）
+# *.db
+# *.db-shm
+# *.db-wal
+
+# 日志文件
+*.log
+npm-debug.log*
+
+# 编辑器
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# 操作系统
+.DS_Store
+Thumbs.db
+
+# Playwright 测试产物
+test-results/
+playwright-report/
+playwright/.cache/
+
+# 临时文件
+/tmp/
+*.tmp

@@ -1,0 +1,99 @@
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+SC:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=LXGW+WenKai:wght@300;400;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+    --card: 240 5% 5%;
+    --card-foreground: 0 0% 100%;
+    --popover: 240 5% 5%;
+    --popover-foreground: 0 0% 100%;
+    --primary: 213 100% 52%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 240 4% 8%;
+    --secondary-foreground: 0 0% 100%;
+    --muted: 240 4% 8%;
+    --muted-foreground: 220 5% 46%;
+    --accent: 240 4% 8%;
+    --accent-foreground: 0 0% 100%;
+    --destructive: 4 90% 58%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 240 4% 12%;
+    --input: 240 4% 12%;
+    --ring: 213 100% 52%;
+    --radius: 0.625rem;
+    --sidebar-background: 240 5% 5%;
+    --sidebar-foreground: 220 5% 70%;
+    --sidebar-primary: 213 100% 52%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 4% 8%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 240 4% 12%;
+    --sidebar-ring: 213 100% 52%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-black text-white antialiased;
+    font-family: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+    line-height: 1.7;
+    overflow-x: hidden;
+  }
+}
+
+@layer utilities {
+  .text-gradient-blue-gold {
+    background: linear-gradient(135deg, #0A84FF 0%, #38BDF8 40%, #D4A574 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  
+  .border-gradient-blue-gold {
+    border: 1px solid transparent;
+    background: linear-gradient(#0C0C0E, #0C0C0E) padding-box,
+                linear-gradient(135deg, rgba(10,132,255,0.4), rgba(212,165,116,0.3)) border-box;
+  }
+  
+  .bg-glass {
+    background: rgba(0,0,0,0.6);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+  
+  .bg-glass-strong {
+    background: rgba(0,0,0,0.85);
+    backdrop-filter: blur(30px);
+    -webkit-backdrop-filter: blur(30px);
+  }
+  
+  .scrollbar-thin {
+    scrollbar-width: thin;
+    scrollbar-color: #1E1E24 transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 4px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: #1E1E24;
+    border-radius: 2px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: #374151;
+  }
+}

@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { db } from '../database/数据库.ts';
+import { keysToCamelCase, successResponse } from '../utils/serializer.ts';
 
 const router = Router();
 
@@ -21,15 +22,13 @@ router.get('/', (req, res) => {
     const projects = db.prepare(
       'SELECT p.* FROM projects p JOIN project_departments pd ON p.id = pd.project_id WHERE pd.department_id = ? ORDER BY p.created_at DESC'
     ).all(d.id) as any[];
+    const dept = keysToCamelCase(d);
+    delete (dept as any).headId;
     return {
-      ...d,
-      shortName: d.short_name,
-      colorHex: d.color_hex,
-      memberCount: d.member_count,
+      ...dept,
       head: head ? {
-        ...head,
+        ...keysToCamelCase(head),
         abilities: head.abilities ? JSON.parse(head.abilities) : [],
-        colorTheme: head.color_theme,
         story: { summary: head.story_summary || '', full: head.story_full || '' },
       } : null,
       projects: projects.map((p) => p.name),
@@ -44,37 +43,22 @@ router.get('/', (req, res) => {
     const involved = db.prepare(
       'SELECT d.name FROM departments d JOIN project_departments pd ON d.id = pd.department_id WHERE pd.project_id = ?'
     ).all(row.id) as any[];
+    const base = keysToCamelCase(row);
+    delete (base as any).leadId; delete (base as any).leadName; delete (base as any).leadAvatar; delete (base as any).leadRole;
+    delete (base as any).startDate; delete (base as any).completedTasks; delete (base as any).taskCount; delete (base as any).updatedAt;
     return {
-      ...row,
+      ...base,
       involvedDepartments: involved.map((d) => d.name),
-      cycles: cycles.map((c) => ({ 
-        id: c.id, 
-        name: c.name, 
-        description: c.description, 
-        startDate: c.start_date, 
-        endDate: c.end_date, 
-        status: c.status, 
-        color: c.color, 
-        order: c['order'] 
-      })),
-      workflow: workflow.map((w) => ({
-        id: w.id,
-        agentId: w.agent_id,
-        agentName: w.agent_name,
-        agentAvatar: w.agent_avatar,
-        agentRole: w.agent_role,
-        department: w.department,
-        departmentColor: w.department_color,
-        order: w['order'],
-        responsibility: w.responsibility,
-      })),
-      lead: row.lead_name,
-      leadAvatar: row.lead_avatar,
-      leadRole: row.lead_role,
-      startDate: row.start_date,
-      completedTasks: row.completed_tasks,
-      taskCount: row.task_count,
-      updatedAt: row.updated_at,
+      cycles: cycles.map((c) => {
+        const cycle = keysToCamelCase(c);
+        delete (cycle as any).projectId; delete (cycle as any).createdAt;
+        return cycle;
+      }),
+      workflow: workflow.map((w) => {
+        const wf = keysToCamelCase(w);
+        delete (wf as any).projectId; delete (wf as any).createdAt; delete (wf as any).updatedAt;
+        return wf;
+      }),
     };
   });
 
@@ -86,16 +70,13 @@ router.get('/', (req, res) => {
   // 最近动态6条
   const activities = db.prepare('SELECT * FROM activities ORDER BY created_at DESC LIMIT 6').all() as any[];
 
-  res.json({
-    success: true,
-    data: {
-      kpi: { totalProjects, inProgress, completed, pending, totalTasks, completedTasks, inProgressTasks, pendingTasks },
-      departments,
-      projects,
-      tasks: taskRows,
-      activities,
-    },
-  });
+  res.json(successResponse({
+    kpi: { totalProjects, inProgress, completed, pending, totalTasks, completedTasks, inProgressTasks, pendingTasks },
+    departments,
+    projects,
+    tasks: taskRows.map((t) => keysToCamelCase(t)),
+    activities: activities.map((a) => keysToCamelCase(a)),
+  }));
 });
 
 export default router;

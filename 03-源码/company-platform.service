@@ -1,0 +1,16 @@
+[Unit]
+Description=启明科技管理平台
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/root/.openclaw/workspace/tech/projects/company-platform/03-源码
+ExecStart=/usr/bin/bash start.sh
+Restart=always
+RestartSec=5
+Environment=NODE_ENV=production
+Environment=PORT=3001
+
+[Install]
+WantedBy=multi-user.target

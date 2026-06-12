@@ -1,0 +1,36 @@
+{
+  "name": "company-platform",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:frontend": "cd src/frontend && npm run build && mkdir -p ../../dist/public && rm -rf ../../dist/public/* && cp -r dist/* ../../dist/public/",
+    "build:backend": "echo '后端使用 tsx 直接运行 TypeScript，无需预编译'",
+    "build": "npm run build:frontend",
+    "start": "NODE_ENV=production PORT=3001 npx tsx src/backend/index.ts",
+    "dev:backend": "npx tsx watch src/backend/index.ts",
+    "dev:frontend": "cd src/frontend && vite",
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "setup": "npm install && cd src/frontend && npm install",
+    "test:e2e": "npx playwright test",
+    "test:e2e:ui": "npx playwright test --ui",
+    "test:e2e:report": "npx playwright show-report"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.0.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.5.0",
+    "express": "^5.1.0",
+    "morgan": "^1.10.0",
+    "tsx": "^4.19.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.60.0",
+    "@types/better-sqlite3": "^7.6.13",
+    "@types/cors": "^2.8.17",
+    "@types/express": "^5.0.2",
+    "@types/morgan": "^1.9.9",
+    "@types/node": "^24.10.1",
+    "typescript": "~5.9.3"
+  }
+}
