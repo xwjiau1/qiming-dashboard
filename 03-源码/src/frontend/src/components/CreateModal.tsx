@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Plus } from 'lucide-react';
+import { X, Plus, Save } from 'lucide-react';
 
 interface CreateModalProps {
   title: string;
@@ -15,43 +15,24 @@ interface CreateModalProps {
     required?: boolean;
     placeholder?: string;
   }>;
+  initialValues?: Record<string, any>;
+  mode?: 'create' | 'edit';
 }
 
-export default function CreateModal({ title, isOpen, onClose, onSubmit, fields }: CreateModalProps) {
-  const [formData, setFormData] = useState<Record<string, any>>({});
+export default function CreateModal({ title, isOpen, onClose, onSubmit, fields, initialValues, mode = 'create' }: CreateModalProps) {
+  const [formData, setFormData] = useState<Record<string, any>>(initialValues || {});
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const newErrors: Record<string, string> = {};
-    
-    fields.forEach((field) => {
-      if (field.required && !formData[field.name]) {
-        newErrors[field.name] = `${field.label} 为必填项`;
-      }
-    });
-
-    if (Object.keys(newErrors).length > 0) {
-      setErrors(newErrors);
-      return;
-    }
-
-    setSubmitting(true);
-    setSubmitError(null);
-
-    try {
-      await onSubmit(formData);
-      setFormData({});
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(initialValues || {});
       setErrors({});
-      onClose();
-    } catch (err: any) {
-      setSubmitError(err.message || '提交失败，请重试');
-    } finally {
+      setSubmitError(null);
       setSubmitting(false);
     }
-  };
+  }, [isOpen, initialValues]);
 
   const handleChange = (name: string, value: any) => {
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -61,6 +42,34 @@ export default function CreateModal({ title, isOpen, onClose, onSubmit, fields }
         delete next[name];
         return next;
       });
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const newErrors: Record<string, string> = {};
+    fields.forEach((field) => {
+      if (field.required && !formData[field.name]) {
+        newErrors[field.name] = `${field.label} 为必填项`;
+      }
+    });
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
+      return;
+    }
+    setSubmitting(true);
+    setSubmitError(null);
+    try {
+      await onSubmit(formData);
+      if (mode === 'create') {
+        setFormData({});
+      }
+      setErrors({});
+      onClose();
+    } catch (err: any) {
+      setSubmitError(err.message || '提交失败，请重试');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -156,8 +165,8 @@ export default function CreateModal({ title, isOpen, onClose, onSubmit, fields }
                     disabled={submitting}
                     className="flex-1 h-10 bg-brand-blue text-white text-sm font-medium rounded-lg hover:bg-brand-blue-dark transition-colors flex items-center justify-center gap-1.5 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    <Plus className="w-4 h-4" />
-                    {submitting ? '创建中...' : '创建'}
+                    {mode === 'create' ? <Plus className="w-4 h-4" /> : <Save className="w-4 h-4" />}
+                    {submitting ? (mode === 'create' ? '创建中...' : '保存中...') : (mode === 'create' ? '创建' : '保存')}
                   </button>
                 </div>
               </form>

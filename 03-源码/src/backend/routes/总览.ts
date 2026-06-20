@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { db } from '../database/数据库.ts';
 import { keysToCamelCase, successResponse } from '../utils/serializer.ts';
 
-const router = Router();
+  const router = Router();
 
 router.get('/', (req, res) => {
   // KPI 聚合
@@ -67,14 +67,25 @@ router.get('/', (req, res) => {
     "SELECT * FROM tasks WHERE status IN ('todo','in-progress','review') ORDER BY updated_at DESC LIMIT 5"
   ).all() as any[];
 
+  // 待办列表（前5条未完成）
+  const todoRows = db.prepare(
+    "SELECT * FROM todos WHERE completed = 0 ORDER BY created_at DESC LIMIT 5"
+  ).all() as any[];
+  const todoCount = (db.prepare("SELECT COUNT(*) as c FROM todos WHERE completed = 0").get() as any).c;
+
   // 最近动态6条
   const activities = db.prepare('SELECT * FROM activities ORDER BY created_at DESC LIMIT 6').all() as any[];
 
   res.json(successResponse({
-    kpi: { totalProjects, inProgress, completed, pending, totalTasks, completedTasks, inProgressTasks, pendingTasks },
+    kpi: { totalProjects, inProgress, completed, pending, totalTasks, completedTasks, inProgressTasks, pendingTasks, todoCount },
     departments,
     projects,
     tasks: taskRows.map((t) => keysToCamelCase(t)),
+    todos: todoRows.map((t) => {
+      const todo = keysToCamelCase(t);
+      todo.completed = Boolean(todo.completed);
+      return todo;
+    }),
     activities: activities.map((a) => keysToCamelCase(a)),
   }));
 });

@@ -6,6 +6,7 @@ import {
   FolderKanban,
   FileText,
   CheckSquare,
+  ListTodo,
   ChevronLeft,
   ChevronRight,
   Sparkles,
@@ -19,6 +20,7 @@ const iconMap: Record<string, React.ElementType> = {
   FolderKanban,
   FileText,
   CheckSquare,
+  ListTodo,
 };
 
 export default function Sidebar() {

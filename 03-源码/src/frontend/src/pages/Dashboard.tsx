@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import { useGSAP } from '@gsap/react';
 import { gsap } from 'gsap';
 import {
@@ -13,17 +14,27 @@ import {
   ChevronRight,
   Plus,
   FolderKanban as ProjectIcon,
+  Circle,
+  CheckCircle2,
+  ArrowUpRight,
+  ListTodo,
+  StickyNote,
+  Sparkles,
 } from 'lucide-react';
 import PageLayout from '@/components/layout/PageLayout';
 import GalaxyCanvas from '@/components/GalaxyCanvas';
 import ProjectDetailModal from '@/components/ProjectDetailModal';
+import CreateModal from '@/components/CreateModal';
+import { toast } from '@/components/Toast';
+import { API } from '@/api';
 import { ShimmerCard, AnimatedProgressBar } from '@/components/gsap';
 import SplitTextReveal from '@/components/gsap/SplitTextReveal';
 import { useAnimatedNumber } from '@/hooks/useAnimatedNumber';
 import { useDashboard } from '@/hooks/useApiData';
 import type { Project, Department, Task, Activity } from '@/data';
+import { priorityConfig } from '@/data';
 
-// ==================== GSAP KPI Card ====================
+// ==================== KPI Card ====================
 function KpiCard({
   icon: Icon,
   label,
@@ -31,6 +42,7 @@ function KpiCard({
   color,
   trend,
   delay,
+  onClick,
 }: {
   icon: React.ElementType;
   label: string;
@@ -38,6 +50,7 @@ function KpiCard({
   color: string;
   trend: string;
   delay: number;
+  onClick?: () => void;
 }) {
   const { ref, value: displayValue } = useAnimatedNumber(value, {
     duration: 2.0,
@@ -47,8 +60,9 @@ function KpiCard({
 
   return (
     <ShimmerCard
-      className="bg-surface border border-surface-tertiary rounded-xl p-5 group"
+      className={`bg-surface border border-surface-tertiary rounded-xl p-5 group ${onClick ? 'cursor-pointer hover:border-brand-blue/20' : ''}`}
       delay={delay}
+      onClick={onClick}
     >
       <div className="flex items-center justify-between mb-3" ref={ref}>
         <div className="flex items-center gap-2">
@@ -309,8 +323,66 @@ function ActivityTimeline({ activities }: { activities: Activity[] }) {
   );
 }
 
+// ==================== Todo List ====================
+function TodoList({ todos, onToggle, onCreate }: { todos: any[]; onToggle: (todo: any) => void; onCreate: () => void }) {
+  return (
+    <div className="space-y-2">
+      {todos.map((todo) => {
+        const priority = priorityConfig[todo.priority || 'medium'];
+        return (
+          <div
+            key={todo.id}
+            className="flex items-center gap-3 p-3 rounded-lg hover:bg-surface-secondary transition-colors group cursor-pointer"
+            onClick={() => onToggle(todo)}
+          >
+            <button
+              type="button"
+              className="flex-shrink-0 text-gray-500 hover:text-brand-blue transition-colors"
+              onClick={(e) => {
+                e.stopPropagation();
+                onToggle(todo);
+              }}
+            >
+              {todo.completed ? (
+                <CheckCircle2 className="w-5 h-5 text-green-400" />
+              ) : (
+                <Circle className="w-5 h-5" />
+              )}
+            </button>
+            <div className="flex-1 min-w-0">
+              <p className={`text-sm ${todo.completed ? 'text-gray-600 line-through' : 'text-white group-hover:text-brand-blue-light'} transition-colors`}>
+                {todo.title}
+              </p>
+            </div>
+            <span
+              className="px-1.5 py-0.5 rounded text-[10px] font-medium flex-shrink-0"
+              style={{ background: `${priority.color}15`, color: priority.color }}
+            >
+              {priority.label}
+            </span>
+          </div>
+        );
+      })}
+      {todos.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-8">
+          <ListTodo className="w-8 h-8 text-gray-700 mb-2" />
+          <p className="text-xs text-gray-500">暂无待办事项</p>
+          <button
+            type="button"
+            onClick={onCreate}
+            className="mt-2 flex items-center gap-1 px-3 py-1.5 bg-brand-blue text-white text-xs font-medium rounded-lg hover:bg-brand-blue-dark transition-colors"
+          >
+            <Plus className="w-3 h-3" />
+            创建待办
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ==================== Task Summary ====================
-function TaskSummary({ tasks }: { tasks: Task[] }) {
+function TaskSummary({ tasks, onNavigate }: { tasks: Task[]; onNavigate: () => void }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const activeTasks = tasks.filter((t) => t.status !== 'completed').slice(0, 5);
 
@@ -341,6 +413,7 @@ function TaskSummary({ tasks }: { tasks: Task[] }) {
         <div
           key={task.id}
           className="task-item flex items-center gap-3 p-3 rounded-lg hover:bg-surface-secondary transition-colors group cursor-pointer"
+          onClick={onNavigate}
         >
           <div
             className="w-5 h-5 rounded border-2 flex-shrink-0 flex items-center justify-center"
@@ -372,6 +445,7 @@ function TaskSummary({ tasks }: { tasks: Task[] }) {
             className="w-5 h-5 rounded-md object-cover flex-shrink-0"
             onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
           />
+          <ArrowUpRight className="w-3.5 h-3.5 text-gray-700 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
         </div>
       ))}
     </div>
@@ -440,23 +514,76 @@ function RingChart({ kpiData }: { kpiData: { totalTasks: number; completedTasks:
   );
 }
 
+// ==================== Quick Actions ====================
+function QuickActions({ onNavigate }: { onNavigate: (path: string) => void }) {
+  const actions = [
+    { icon: FolderKanban, label: '新建项目', path: '/projects', color: '#0A84FF' },
+    { icon: CheckCircle, label: '新建任务', path: '/tasks', color: '#30D158' },
+    { icon: ListTodo, label: '新建待办', path: '/todos', color: '#FFD60A' },
+    { icon: StickyNote, label: '新建文档', path: '/documents', color: '#D4A574' },
+  ];
+
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+      {actions.map((action) => {
+        const Icon = action.icon;
+        return (
+          <button
+            type="button"
+            key={action.path}
+            onClick={() => onNavigate(action.path)}
+            className="flex items-center gap-3 px-4 py-3 bg-surface border border-surface-tertiary rounded-xl hover:border-brand-blue/20 transition-all group"
+          >
+            <div
+              className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+              style={{ background: `${action.color}15` }}
+            >
+              <Icon className="w-4 h-4" style={{ color: action.color }} />
+            </div>
+            <span className="text-sm text-gray-300 group-hover:text-white transition-colors">{action.label}</span>
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
 // ==================== Main Dashboard ====================
 export default function Dashboard() {
+  const navigate = useNavigate();
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
-  // 使用 API 数据（总览聚合接口）
-  const { data: dashboardData } = useDashboard();
+  const [showTodoCreateModal, setShowTodoCreateModal] = useState(false);
+  const { data: dashboardData, loading: dashboardLoading, refresh: refreshDashboard } = useDashboard();
 
   const departments = dashboardData?.departments || [];
   const projects = dashboardData?.projects || [];
   const tasks = dashboardData?.tasks || [];
+  const todos = dashboardData?.todos || [];
   const activities = dashboardData?.activities || [];
-  const kpiData = dashboardData?.kpi || { totalProjects: 0, inProgress: 0, completed: 0, pending: 0, totalTasks: 0, completedTasks: 0, inProgressTasks: 0, pendingTasks: 0 };
+  const kpiData = dashboardData?.kpi || { totalProjects: 0, inProgress: 0, completed: 0, pending: 0, totalTasks: 0, completedTasks: 0, inProgressTasks: 0, pendingTasks: 0, todoCount: 0 };
 
   const crossDeptProjects = projects.filter((p) => p.involvedDepartments.length > 1).length;
 
+  const handleTodoToggle = async (todo: any) => {
+    try {
+      await API.todos.toggle(todo.id, !todo.completed);
+      toast('success', todo.completed ? '标记为未完成' : '已完成');
+      refreshDashboard();
+    } catch (err: any) {
+      toast('error', '操作失败: ' + err.message);
+    }
+  };
+
+  const handleCreateTodo = async (data: any) => {
+    await API.todos.create(data);
+    toast('success', '待办创建成功');
+    setShowTodoCreateModal(false);
+    refreshDashboard();
+  };
+
   return (
     <PageLayout title="总览" subtitle="启明科技 · 管理驾驶舱">
-      {/* Hero with SplitTextReveal */}
+      {/* Hero */}
       <div className="relative h-56 rounded-xl overflow-hidden mb-6">
         <GalaxyCanvas />
         <div className="absolute inset-0 flex flex-col justify-center px-6 lg:px-8" style={{ zIndex: 1 }}>
@@ -484,11 +611,19 @@ export default function Dashboard() {
           />
 
           <div className="flex items-center gap-3 mt-5" style={{ opacity: 1 }}>
-            <button className="hero-btn flex items-center gap-2 px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-lg hover:bg-brand-blue-dark transition-colors" onClick={() => window.alert('新建项目功能开发中')}>
+            <button
+              type="button"
+              className="hero-btn flex items-center gap-2 px-4 py-2 bg-brand-blue text-white text-sm font-medium rounded-lg hover:bg-brand-blue-dark transition-colors"
+              onClick={() => navigate('/projects')}
+            >
               <Plus className="w-4 h-4" />
               新建项目
             </button>
-            <button className="hero-btn flex items-center gap-2 px-4 py-2 bg-surface-secondary border border-surface-tertiary text-gray-300 text-sm font-medium rounded-lg hover:bg-surface-tertiary transition-colors" onClick={() => window.alert('新建任务功能开发中')}>
+            <button
+              type="button"
+              className="hero-btn flex items-center gap-2 px-4 py-2 bg-surface-secondary border border-surface-tertiary text-gray-300 text-sm font-medium rounded-lg hover:bg-surface-tertiary transition-colors"
+              onClick={() => navigate('/tasks')}
+            >
               <Plus className="w-4 h-4" />
               新建任务
             </button>
@@ -496,12 +631,49 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards with Shimmer hover */}
+      {/* Quick Actions */}
+      <div className="mb-6">
+        <QuickActions onNavigate={navigate} />
+      </div>
+
+      {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard icon={FolderKanban} label="项目总数" value={kpiData.totalProjects} color="#0A84FF" trend="跨部门协作" delay={0.2} />
-        <KpiCard icon={Loader} label="进行中" value={kpiData.inProgress} color="#38BDF8" trend="+1 本周" delay={0.35} />
-        <KpiCard icon={CheckCircle} label="已完成" value={kpiData.completed} color="#30D158" trend="+1 本周" delay={0.5} />
-        <KpiCard icon={Clock} label="待处理" value={kpiData.pending} color="#FFD60A" trend="待启动" delay={0.65} />
+        <KpiCard
+          icon={FolderKanban}
+          label="项目总数"
+          value={kpiData.totalProjects}
+          color="#0A84FF"
+          trend="跨部门协作"
+          delay={0.2}
+          onClick={() => navigate('/projects')}
+        />
+        <KpiCard
+          icon={Loader}
+          label="进行中"
+          value={kpiData.inProgress}
+          color="#38BDF8"
+          trend="+1 本周"
+          delay={0.35}
+          onClick={() => navigate('/projects')}
+        />
+        <KpiCard
+          icon={CheckCircle}
+          label="已完成"
+          value={kpiData.completed}
+          color="#30D158"
+          trend="+1 本周"
+          delay={0.5}
+          onClick={() => navigate('/projects')}
+        />
+        <KpiCard
+          icon={Clock}
+          label="待处理"
+          value={kpiData.pending}
+          color="#FFD60A"
+          trend="待启动"
+          delay={0.65}
+          onClick={() => navigate('/projects')}
+        />
       </div>
 
       {/* Departments + Activity */}
@@ -530,7 +702,11 @@ export default function Dashboard() {
       <div className="mb-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium text-white">项目概览</h3>
-          <button className="flex items-center gap-1 text-sm text-brand-blue hover:text-brand-blue-light transition-colors">
+          <button
+            type="button"
+            onClick={() => navigate('/projects')}
+            className="flex items-center gap-1 text-sm text-brand-blue hover:text-brand-blue-light transition-colors"
+          >
             查看全部
             <ChevronRight className="w-4 h-4" />
           </button>
@@ -550,22 +726,67 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Tasks + Ring Chart */}
+      {/* Todos + Ring Chart */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
         <div className="bg-surface border border-surface-tertiary rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-medium text-white">待办任务</h3>
-            <button className="flex items-center gap-1 px-3 py-1.5 bg-brand-blue text-white text-xs font-medium rounded-lg hover:bg-brand-blue-dark transition-colors">
+            <div className="flex items-center gap-2">
+              <ListTodo className="w-4 h-4 text-brand-gold" />
+              <h3 className="text-lg font-medium text-white">待办事项</h3>
+              <span className="px-2 py-0.5 rounded-full bg-brand-gold/10 text-brand-gold text-xs font-medium">
+                {kpiData.todoCount}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowTodoCreateModal(true)}
+              className="flex items-center gap-1 px-3 py-1.5 bg-brand-blue text-white text-xs font-medium rounded-lg hover:bg-brand-blue-dark transition-colors"
+            >
               <Plus className="w-3 h-3" />
               新建
             </button>
           </div>
-          <TaskSummary tasks={tasks} />
+          <TodoList todos={todos} onToggle={handleTodoToggle} onCreate={() => setShowTodoCreateModal(true)} />
+          {todos.length > 0 && (
+            <button
+              type="button"
+              onClick={() => navigate('/todos')}
+              className="w-full mt-3 py-2 text-xs text-brand-blue hover:text-brand-blue-light transition-colors border-t border-surface-tertiary"
+            >
+              查看全部待办 →
+            </button>
+          )}
         </div>
         <div className="bg-surface border border-surface-tertiary rounded-xl p-5 flex flex-col items-center justify-center">
           <h3 className="text-lg font-medium text-white mb-4 self-start">任务统计</h3>
           <RingChart kpiData={kpiData} />
+          <button
+            type="button"
+            onClick={() => navigate('/tasks')}
+            className="mt-4 flex items-center gap-1 px-4 py-2 bg-brand-blue/10 text-brand-blue text-xs font-medium rounded-lg hover:bg-brand-blue/20 transition-colors"
+          >
+            <ArrowUpRight className="w-3 h-3" />
+            前往任务管理
+          </button>
         </div>
+      </div>
+
+      {/* Tasks Summary */}
+      <div className="bg-surface border border-surface-tertiary rounded-xl p-5 mb-6">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Sparkles className="w-4 h-4 text-brand-blue" />
+            <h3 className="text-lg font-medium text-white">活跃任务</h3>
+          </div>
+          <button
+            onClick={() => navigate('/tasks')}
+            className="flex items-center gap-1 text-sm text-brand-blue hover:text-brand-blue-light transition-colors"
+          >
+            查看全部
+            <ChevronRight className="w-4 h-4" />
+          </button>
+        </div>
+        <TaskSummary tasks={tasks} onNavigate={() => navigate('/tasks')} />
       </div>
 
       {/* Modal */}
@@ -578,6 +799,23 @@ export default function Dashboard() {
           />
         )}
       </AnimatePresence>
+
+      {/* Create Todo Modal */}
+      <CreateModal
+        title="新建待办"
+        isOpen={showTodoCreateModal}
+        onClose={() => setShowTodoCreateModal(false)}
+        onSubmit={handleCreateTodo}
+        fields={[
+          { name: 'title', label: '待办标题', type: 'text', required: true, placeholder: '输入待办事项' },
+          { name: 'priority', label: '优先级', type: 'select', required: true, options: [
+            { value: 'high', label: '高优先级' },
+            { value: 'medium', label: '中优先级' },
+            { value: 'low', label: '低优先级' },
+          ]},
+          { name: 'dueDate', label: '截止日期', type: 'text', placeholder: 'YYYY-MM-DD' },
+        ]}
+      />
     </PageLayout>
   );
 }

@@ -177,5 +177,23 @@ export function initSchema() {
     );
   `);
 
+  // 10. 待办表（v2 新增）
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS todos (
+      id              TEXT PRIMARY KEY,
+      title           TEXT NOT NULL,
+      completed       INTEGER NOT NULL DEFAULT 0 CHECK(completed IN (0,1)),
+      priority        TEXT NOT NULL DEFAULT 'medium' CHECK(priority IN ('high','medium','low')),
+      due_date        TEXT,
+      assignee_id     TEXT,
+      assignee_name   TEXT,
+      assignee_avatar TEXT,
+      created_at      INTEGER NOT NULL,
+      updated_at      INTEGER NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS idx_todos_completed ON todos(completed);
+    CREATE INDEX IF NOT EXISTS idx_todos_priority ON todos(priority);
+  `);
+
   console.log('[数据库] Schema 初始化完成');
 }

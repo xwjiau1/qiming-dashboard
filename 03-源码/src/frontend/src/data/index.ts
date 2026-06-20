@@ -398,6 +398,7 @@ export const navItems: NavItem[] = [
   { icon: 'FolderKanban', label: '项目', path: '/projects' },
   { icon: 'FileText', label: '文档', path: '/documents' },
   { icon: 'CheckSquare', label: '任务', path: '/tasks' },
+  { icon: 'ListTodo', label: '待办', path: '/todos' },
 ];
 
 // ==================== Status/Priority Configs ====================

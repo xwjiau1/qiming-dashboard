@@ -13,10 +13,12 @@ export interface DashboardData {
     completedTasks: number;
     inProgressTasks: number;
     pendingTasks: number;
+    todoCount: number;
   };
   departments: Department[];
   projects: Project[];
   tasks: Task[];
+  todos: any[];
   activities: Activity[];
 }
 
@@ -25,6 +27,7 @@ function useApi<T>(fetcher: () => Promise<T>, deps: unknown[] = []) {
   const [data, setData] = useState<T | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [tick, setTick] = useState(0);
 
   useEffect(() => {
     let mounted = true;
@@ -34,9 +37,11 @@ function useApi<T>(fetcher: () => Promise<T>, deps: unknown[] = []) {
       .catch((err) => { if (mounted) { setError(err.message || '加载失败'); } })
       .finally(() => { if (mounted) setLoading(false); });
     return () => { mounted = false; };
-  }, deps);
+  }, [...deps, tick]);
 
-  return { data, loading, error };
+  const refresh = () => setTick((t) => t + 1);
+
+  return { data, loading, error, refresh };
 }
 
 export function useDashboard() {

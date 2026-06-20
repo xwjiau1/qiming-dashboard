@@ -90,4 +90,38 @@ router.patch('/:id', (req, res) => {
   res.json(successResponse({ id: req.params.id }));
 });
 
+router.put('/:id', (req, res) => {
+  const { title, priority, status, projectId, department, assigneeId, dueDate, description } = req.body;
+  const now = Date.now();
+  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id) as any;
+  if (!task) return res.status(404).json(errorResponse('任务不存在'));
+
+  const project = db.prepare('SELECT name FROM projects WHERE id = ?').get(projectId) as any;
+  const assignee = db.prepare('SELECT name, avatar, role FROM agents WHERE id = ?').get(assigneeId) as any;
+  const deptColor = department === '技术部' ? 'blue' : department === '设计部' ? 'gold' : 'blue';
+
+  db.prepare(`
+    UPDATE tasks SET
+      title = ?, priority = ?, status = ?, project_id = ?, project_name = ?,
+      department = ?, department_color = ?, assignee_id = ?, assignee_name = ?,
+      assignee_avatar = ?, assignee_role = ?, due_date = ?, description = ?, updated_at = ?
+    WHERE id = ?
+  `).run(
+    title, priority, status, projectId, project?.name || '',
+    department, deptColor, assigneeId || null, assignee?.name || '',
+    assignee?.avatar || '', assignee?.role || '', dueDate, description || '', now, req.params.id
+  );
+
+  recordTaskActivity('更新了任务', title, req.params.id, deptColor);
+  res.json(successResponse({ id: req.params.id }));
+});
+
+router.delete('/:id', (req, res) => {
+  const task = db.prepare('SELECT * FROM tasks WHERE id = ?').get(req.params.id) as any;
+  if (!task) return res.status(404).json(errorResponse('任务不存在'));
+  db.prepare('DELETE FROM tasks WHERE id = ?').run(req.params.id);
+  recordTaskActivity('删除了任务', task.title, task.id, task.department_color || 'blue');
+  res.json(successResponse({ id: req.params.id }));
+});
+
 export default router;
